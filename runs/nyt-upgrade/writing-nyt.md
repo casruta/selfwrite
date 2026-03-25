@@ -44,6 +44,11 @@ Once you know who's reading, apply the corresponding profile:
 
 **Register consistency**: once you pick a register (formal, semi-formal, informal), maintain it throughout. Shifting from contracted informal prose to un-contracted formal prose mid-piece breaks reader trust.
 
+**Mixed audiences** (the most common real-world case): when a piece needs to work for both experts and lay readers, target the lay reader and add depth for experts through:
+- **Layered structure**: main text accessible to all, with technical detail in specific paragraphs that experts can dive into
+- **Inline context**: "The yield curve inverted, meaning short-term bonds pay more than long-term ones, a pattern that has preceded every U.S. recession since 1955." Experts skip the definition; lay readers need it
+- **The parenthetical aside**: use sparingly for expert-level precision that doesn't interrupt the lay narrative
+
 ## Before Writing: The Intake
 
 Before applying any rules, establish what you're writing. The answers to these questions override defaults throughout the skill.
