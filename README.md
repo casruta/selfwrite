@@ -35,11 +35,33 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 - **Simple rewrite** -- THINK → TEST → REFLECT. Prose quality, structure, style
 - **Deep rewrite** -- adds a RESEARCH phase alongside THINK, surfacing missing context, counterarguments, and evidence gaps. You approve what gets incorporated
 
-Every iteration:
+```
+       ┌───────────────────────────────┐
+       │                               │
+       ▼                               │
+  ┌─────────┐                          │
+  │  THINK  │  Read history, analyze,  │
+  │         │  form hypothesis         │
+  └────┬────┘                          │
+       │                               │
+       ▼                               │
+  ┌─────────┐                          │
+  │  TEST   │  Revise, score, measure  │
+  │         │  Keep or revert          │
+  └────┬────┘                          │
+       │                               │
+       ▼                               │
+  ┌─────────┐                          │
+  │ REFLECT │  Log result, check       │
+  │         │  convergence signals     │
+  └────┬────┘                          │
+       │                               │
+       └───────────────────────────────┘
+```
 
-- **THINK** -- identify the weakest dimension, adopt an expert persona, form a hypothesis
+- **THINK** -- identify the weakest dimension, adopt an expert persona (senior editor, beat reporter, research director), ask 2-3 questions that reference specific content in the draft, form a hypothesis
 - **TEST** -- revise, score every dimension, keep only if the composite improved
-- **REFLECT** -- log the result, check for plateau, adjust strategy
+- **REFLECT** -- log the result, check for plateau or over-optimization, adjust strategy
 
 The loop uses the entire time budget.
 
