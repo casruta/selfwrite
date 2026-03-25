@@ -96,6 +96,242 @@ It matches verb strength to the magnitude of change ("edged up" for 3%, "surged"
 
 The full writing skill, distilled from the NYT upgrade run, is in [`runs/nyt-upgrade/writing-nyt.md`](runs/nyt-upgrade/writing-nyt.md).
 
+## Demo: A Complete Run, Start to Finish
+
+This walkthrough shows exactly what happens when you invoke selfwrite. The example uses the NYT upgrade run, but every run follows the same sequence.
+
+### Step 1: Invoke
+
+```
+/selfwrite "upgrade writing.md to NYT journalist quality" 6h
+```
+
+Selfwrite parses the task ("upgrade writing.md to NYT journalist quality") and the duration (6 hours). It records the start time and calculates the deadline.
+
+### Step 2: Clarifying Questions
+
+Before doing anything else, selfwrite asks you questions to shape the rubric:
+
+```
+Before I start, I need to understand what you're after.
+
+1. Who is the audience for this writing skill?
+   → Claude Code users producing reports, features, and data narratives
+
+2. What tone are you targeting?
+   → NYT journalist: confident, narrative, specific. Not academic, not corporate.
+
+3. What's the biggest gap in the current version?
+   → It produces competent analytical prose but nothing that reads like journalism.
+     No scene-setting, no sourcing, no narrative structure.
+
+4. Are there specific elements you want prioritized?
+   → Lede craft, story architecture, evidence integration. The kind of
+     techniques that separate a wire service report from a front-page feature.
+
+5. Any constraints?
+   → The skill file should stay under 400 lines. Consolidate periodically.
+```
+
+Your answers determine what gets measured. In this case, selfwrite generates a rubric with six dimensions weighted toward the gaps you identified.
+
+### Step 3: Rubric Generation
+
+Selfwrite builds a scoring rubric tailored to your answers and locks it for the entire run:
+
+```
+# NYT Writing Quality Rubric
+Locked at run start. No mid-run changes.
+
+1. Lede Quality (0.20)
+   1-2: Generic throat-clearing, no hook, could open any article
+   5-6: Competent hard lede with key fact front-loaded, clear but unremarkable
+   9-10: Opening that compels the next paragraph; type matches content
+
+2. Narrative Architecture (0.20)
+   1-2: Flat list of facts, no arc, sections could be reordered without loss
+   5-6: Clear logical progression with nut graph, but predictable
+   9-10: Structure chosen deliberately; tension sustained through question engine
+
+3. Voice & Authority (0.20)
+   1-2: Sounds like a corporate memo or AI summary
+   5-6: Confident analytical voice, consistent but narrow tonal range
+   9-10: Distinctive voice; tonal shifts feel natural; contractions and
+         sentence variety placed where emphasis demands, not uniformly
+
+4. Evidence Integration (0.15)
+   1-2: Data dumped in dedicated paragraphs; no sources named
+   5-6: Numbers contextualized; sources introduced with credentials
+   9-10: Quotes, data, scene detail braided together invisibly
+
+5. Explanatory Clarity (0.15)
+   1-2: Jargon unexplained or oversimplified to inaccuracy
+   5-6: Complex ideas explained with one clear analogy
+   9-10: Layered explanation (analogy then mechanism); reader understands
+         both "what" and "why it matters"
+
+6. Anti-AI Quality (0.10)
+   1-2: Reads like ChatGPT with a style sheet; uniform sentence rhythm
+   5-6: Passes casual reading; no obvious markers but lacks personality
+   9-10: Zero AI-tell markers; genuine editorial judgment and skepticism
+```
+
+Each dimension has observable markers at three levels so scoring stays concrete. Weights sum to 1.0, with the dimensions you prioritized weighted highest.
+
+### Step 4: Baseline
+
+Selfwrite produces (or scores) the initial version and anchors it at 4-6. This is a hard rule. A first draft is never scored above 7.
+
+```
+Pre-score weaknesses:
+  (1) Every sentence follows the same [fact] + [number] pattern
+  (2) No human sources, no quotes, no named individuals
+  (3) Reads like a StatsCan data release, not journalism
+
+Baseline scores:
+  Lede Quality:            5
+  Narrative Architecture:  4
+  Voice & Authority:       5
+  Evidence Integration:    6
+  Explanatory Clarity:     5
+  Anti-AI Quality:         5
+  ─────────────────────────
+  Composite:               4.95
+
+Saved to versions/v0.md
+```
+
+### Step 5: The Iteration Loop
+
+Now the loop runs. Here's what a single iteration looks like, condensed from cycle 11 of the NYT run:
+
+**THINK.**
+
+```
+Target: Voice & Authority (7) and Evidence Integration (7)
+        Both are bottlenecked by single-source samples with no
+        attribution guidance.
+
+Expert persona: Senior editor, national desk.
+
+Questions:
+  1. "How many named sources does this piece have? If it's one,
+      you don't have journalism; you have a profile."
+  2. "Does each source add a distinct perspective, or are they
+      saying the same thing in different words?"
+
+Answers:
+  1. Only one named source. Need at least two for a reported piece,
+     three for braided evidence.
+  2. N/A — can't evaluate source diversity with a single source.
+
+Hypothesis: Adding attribution guidance with the "said" rule, source
+introduction patterns, and three quote types will improve voice_authority
+from 7 to 8 and evidence_integration from 7 to 8, because both dimensions
+are bottlenecked by single-source samples.
+```
+
+**TEST.**
+
+Selfwrite researches the topic (attribution best practices from journalism handbooks), drafts the revision (38 lines added: "said" rule, source introduction, quote types, attribution placement), and writes a new sample demonstrating multi-source reporting.
+
+Then it scores:
+
+```
+Pre-score weaknesses:
+  (1) Hard lede instead of scene, though correct for hourglass
+  (2) "Declined to comment" paragraph is thin
+  (3) Kicker ends on a quote (acceptable because quote is extraordinary)
+
+Scores:
+  Lede Quality:            8  (unchanged)
+  Narrative Architecture:  8  (unchanged)
+  Voice & Authority:       7 → 8  (+1)
+  Evidence Integration:    7 → 8  (+1)
+  Explanatory Clarity:     8  (unchanged)
+  Anti-AI Quality:         8  (unchanged)
+  ─────────────────────────────────
+  Composite:               7.65 → 8.00  (+0.35)
+
+Decision: KEEP
+```
+
+**REFLECT.**
+
+```
+ALL SIX DIMENSIONS NOW AT 8. Attribution was the highest-leverage
+remaining intervention — it addressed both lagging dimensions
+simultaneously. Source braiding (Moffatt frames → Whitzman echoes →
+government responds → Moffatt caps) produces narrative architecture
+AND evidence integration at the same time.
+
+Convergence signal: all dimensions at 7+ triggered at cycle 6.
+Now all at 8+. Switch to micro-craft for remaining cycles.
+
+Logged to log.md and results.tsv. Time remaining: 3h 53m. Continuing.
+```
+
+This cycle repeats. Each iteration targets the weakest dimension, forms a hypothesis, revises, scores, and keeps or reverts. The run continues until the iteration phase deadline (60% of total time).
+
+### Step 6: Distillation
+
+After the iteration loop, selfwrite spends ~30% of the time budget analyzing its own log. It reads every iteration, groups successful revisions by type, and extracts the patterns that produced the biggest score jumps.
+
+The output is a standalone skill file:
+
+```
+# Journalism-Grade Analytical Writing
+
+## Lede Craft
+  - 4 lede types with decision tree
+  - Execution rules: S-V-O, concrete nouns, tension test
+  - Anti-patterns: starting with dates, dependent clauses, rhetorical questions
+
+## Story Architecture
+  - 4 structures (inverted pyramid, hourglass, diamond, braided)
+  - The question engine: every section answers one question and raises the next
+
+## Attribution & Source Integration
+  - "Said" is a utility word like "the" — repeating it is correct
+  - Three quote types: direct, paraphrase, partial
+  - Setup-evidence-significance pattern
+
+## The Kill List
+  - AI-tell markers to delete: "comprehensive," "robust," "notable,"
+    "delve into," "demonstrates," "multifaceted," ...
+
+[... 426 lines total]
+```
+
+The key design choice: the skill captures questions, not answers. "Does each piece of evidence resolve a tension the reader already feels?" forces engagement with the specific text. "Use quotes strategically" can be applied mechanically.
+
+### Step 7: Summary
+
+Selfwrite presents the final results:
+
+```
+Run complete: nyt-upgrade
+Duration: 6 hours (12 of 36 planned cycles completed)
+Composite: 4.95 → 8.15 (+3.20)
+
+  Iterations: 12 attempted, 11 kept, 0 reverted
+  All 6 dimensions at 8+
+  First dimension to reach 9: Evidence Integration
+
+  Top 3 learnings:
+    1. Attribution patterns were the single highest-leverage intervention —
+       they improved two dimensions simultaneously
+    2. "Said" as a utility word is an anti-AI signal (AI rotates synonyms;
+       humans repeat "said" because it's invisible)
+    3. The question engine works at every scale: story-level (paragraph
+       chaining), evidence-level (setup-evidence-significance)
+
+  Skill file: runs/nyt-upgrade/writing-nyt.md (426 lines)
+  Install to ~/.claude/skills/writing.md? [y/n]
+```
+
+The skill file is ready to install. Once installed, Claude applies those patterns automatically on every future writing task.
+
 ## What the Output Looks Like
 
 The best way to understand what selfwrite produces is to read the output at different stages. The `runs/nyt-upgrade/` directory contains a complete run: 12 iterations, same topic at each stage, so you can see exactly how the text changes.
