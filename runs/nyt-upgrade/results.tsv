@@ -1,0 +1,13 @@
+cycle	topic	hypothesis	lede_quality	narrative_architecture	voice_authority	evidence_integration	explanatory_clarity	anti_ai_quality	composite_before	composite_after	delta	decision	reason	lines_added	total_lines
+1	setup-baseline	n/a	5	4	5	6	5	5	0	4.95	0	baseline	initial setup and scoring	0	227
+2	lede-craft-types	Adding lede type taxonomy improves lede_quality from 5 to 6	6	4	6	6	5	5	4.95	5.35	+0.40	keep	Anecdotal lede + decision tree produced stronger openings	38	265
+3	lede-craft-execution	Adding execution rules improves lede_quality to 7 and anti_ai to 6	7	5	6	6	5	6	5.35	5.85	+0.50	keep	S-V-O rule + tension test + concrete nouns produced stronger first sentences	18	283
+4	nut-graph	Adding nut graph with three-questions test improves narrative_architecture to 6	7	6	7	6	5	6	5.85	6.25	+0.40	keep	Three-questions test + zoom technique created clear scene-to-body bridge	35	318
+5	narrative-arc-structures	Adding story architecture with structure selection improves narrative_architecture to 7	7	7	7	7	6	6	6.25	6.75	+0.50	keep	Hourglass structure embedded data as plot points; council-vote narrative explained mechanism	23	341
+6	narrative-arc-tension	Adding question engine improves explanatory_clarity and anti_ai to 7	7	7	7	7	7	7	6.75	7.00	+0.25	keep	Question engine + analogy-then-mechanism produced genuinely varied pacing	24	365
+7	kicker-endings	Adding kicker types and echo technique improves anti_ai to 8	7	7	7	7	7	8	7.00	7.10	+0.10	keep	Echo kicker produced genuine narrative callback; ironic displacement arc reads as human craft	30	395
+8	consolidation-1	Compress to 320 lines with zero quality loss	7	7	7	7	7	8	7.10	7.10	0	keep	Compressed 395 to 321 lines (19% reduction) with identical scoring on comprehensive sample	-74	321
+9	scene-setting-detail	Adding scene-setting with telling detail and sensory priority improves lede to 8 and explanatory to 8	8	7	7	7	8	8	7.10	7.45	+0.35	keep	Scene lede with non-visual senses and telling detail; show-then-name explanation pattern	28	349
+10	scene-setting-economy	Adding scene economy rules improves narrative_architecture to 8	8	8	7	7	8	8	7.45	7.65	+0.20	keep	Varied scene lengths: full scenes at structural moments, micro-scenes at data breaks	19	368
+11	attribution-patterns	Adding attribution with said rule and source intro improves voice and evidence to 8	8	8	8	8	8	8	7.65	8.00	+0.35	keep	Multi-source sample with three quote types; ALL DIMENSIONS AT 8	38	406
+12	evidence-weaving	Adding setup-evidence-significance pattern improves evidence_integration to 9	8	8	8	9	8	8	8.00	8.15	+0.15	keep	First dimension to reach 9; quote/paraphrase decisions are strategic	20	426
