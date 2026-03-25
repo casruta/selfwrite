@@ -374,6 +374,15 @@ Never write vague assessments ("strong performance", "showed improvement"). Embe
 **Executive summary bullet**: [What] + [how much] + [so what]
 > "Property crime fell 42% (85k to 49k), the steepest two-decade decline on record, suggesting structural deterrence rather than cyclical fluctuation."
 
+### Variation Targets
+
+Templates are starting points, not formulas. Repeating the same structure across paragraphs is an AI tell.
+
+- In every 5 paragraphs, use at least 3 different lengths: 1-sentence punch, 2-3 sentence transition, 5+ sentence analytical block
+- In every 5 paragraphs, use at least 3 different openings: declarative, question, fragment, data-point, subordinate clause
+- No two consecutive paragraphs should follow the same template
+- Mix 1-sentence kickers with 7-sentence deep dives. Clustering at 4-5 sentences per paragraph is a detection signal
+
 ## Hedge Calibration
 
 ### Budget: one hedge per claim
@@ -387,9 +396,9 @@ Never write vague assessments ("strong performance", "showed improvement"). Embe
 
 If you're hedging more than 30% of claims, you're either uncertain about your data (fix the data) or defaulting to caution out of habit (stop).
 
-## AI Detection: Honest Limitation
+## AI Detection & Human-Signal Patterns
 
-This skill makes AI prose genuinely better to read. It won't make it pass AI detection tools (GPTZero, etc.), which measure token-level statistical patterns no style change can alter. If detection matters, the text needs human rewriting. Apply these rules because the prose reads better, not to fool detectors.
+AI detectors measure perplexity (word predictability), burstiness (sentence-length variance), subordination density, and lexical diversity. Clean prose from an LLM scores poorly on all four because it lacks the statistical irregularities human writers produce naturally. The rules below address each gap. Apply them because they make prose genuinely better, not to game detectors.
 
 ### Quality Rules
 
@@ -401,6 +410,101 @@ This skill makes AI prose genuinely better to read. It won't make it pass AI det
 6. **Admit ignorance.** "I don't have the ARO balance, but for a company this size, it's likely material." Ignorance + directional intuition reads as experienced.
 7. **Word repetition.** No non-trivial word more than 5 times per ~300 words.
 8. **Vary paragraph openings.** Across 5 paragraphs, use at least 3 structures: declarative, question, single-word punch, subordinate clause, data-point opener.
+
+### Intellectual Authenticity
+
+These markers signal a real mind behind the prose. AI defaults to confident, complete, evenly hedged statements. Humans think on the page.
+
+- **Show your thinking**: "Why does this happen? Three reasons, though the first still surprises me." Let the reader see the reasoning, not just the conclusion
+- **Admit gaps with direction**: "I don't have the exact mechanism, but the direction is clear." Ignorance paired with intuition reads as experienced, not uncertain
+- **Question your own data**: "The numbers say X, but that doesn't explain Y." Skepticism about your own evidence is the opposite of AI behavior
+- **Curiosity markers**: "Which raises a question nobody's asked yet." Genuine wonder, not performative
+- **Asymmetric confidence**: be very confident on 70% of claims, lightly hedge 20%, strongly hedge 10%. The mix signals real judgment. Uniform hedging is a tell
+
+### Burstiness
+
+Burstiness measures variance in sentence length. Human writing scores 0.60-1.00. AI-generated text scores 0.15-0.30. This is the single most reliable detection signal.
+
+**Targets:**
+- Burstiness coefficient (std dev of sentence lengths / mean) >= 0.50
+- Adjacent sentences must differ by 5+ words
+- Three consecutive sentences within ±3 words of each other = rewrite one
+- In every 5 sentences: at least one <= 8 words, at least one >= 25 words
+
+**Fragment placement:**
+Fragments are incomplete sentences used deliberately for emphasis. They work after a complete setup, at narrative turns, and in kickers. Never two fragments in a row.
+
+**Bad** (uniform, burstiness ~0.20):
+> "The policy was introduced in 2019. It targeted first-time homebuyers. The program offered subsidized rates. Applications exceeded expectations. The backlog grew steadily."
+
+**Good** (varied, burstiness ~0.65):
+> "The policy landed in 2019 with a simple promise: cheaper mortgages for first-time buyers. Applications flooded in. Within six months, the backlog had swallowed the department's entire processing capacity, and nobody in Ottawa seemed to have a plan for what came next."
+
+### Productive Imperfection
+
+Skilled writers break grammatical rules deliberately. AI avoids rule-breaking because it's trained on "correct" text. Strategic imperfection signals a human hand.
+
+| Technique | Frequency | Example |
+|-----------|-----------|---------|
+| **Sentence fragments** | 1-2 per 500 words | "Wrong." / "Not quite." / "If the data holds." Always after a complete sentence |
+| **Conjunction starts** | 1 per 3-4 paragraphs | "But the numbers tell a different story." / "And that's the problem." / "So what changed?" |
+| **Comma splices** | Max 1 per 1000 words | "The earnings were off, nobody expected that." Use when the splice creates forward momentum |
+| **Rhetorical redundancy** | Max 1 per section | "It's expensive. Very expensive." Deliberate repetition for emphasis |
+| **Vague backreferences** | Where context is obvious | "It works. Here's why." The "it" isn't restated because the reader already knows |
+
+**Anti-patterns**: Don't stack imperfections. One fragment followed by a comma splice followed by a conjunction start reads as sloppy, not human. Space them out. Each one should feel earned.
+
+### Rhetorical Devices
+
+AI rarely uses these correctly. When they land, they signal craft.
+
+**Litotes** (understatement via negation): Implies magnitude through restraint. "Not nothing." "No small feat." "Hardly trivial." Use 1-2x per piece for a finding that deserves understatement.
+
+**Zeugma** (one word governing two phrases in different senses): "She lost her patience and her car keys." Rare. Max 1x per piece. Only when the double meaning genuinely surprises. Forced zeugma is worse than none.
+
+**Anaphora** (repetition at sentence start): Creates emotional weight. "They fought for it. They bled for it. They lost." Max 1 set of 3 per piece. Use in kickers or key findings. Never in exposition.
+
+**Anadiplosis** (end word becomes next start): Creates momentum. "The data pointed to fraud. Fraud on a scale nobody expected." Use in narrative passages where one idea drives the next.
+
+**Parenthetical asides**: "(This matters because...)" or quiet caveats that add personality without disrupting flow. 2-3 per 1000 words. Use for genuine caveats, loopy details, or intellectual honesty. Not for decoration.
+
+### Idiom & Colloquialism
+
+Regional language grounds prose as human. AI defaults to formal, region-neutral phrasing.
+
+**Rules:**
+- 1-2 colloquialisms per 500 words in analytical prose
+- Pick North American OR British English at run start. Maintain throughout. Never mix
+- More colloquial in opinion/feature pieces, fewer in hard news/data reports
+
+**North American set**: "in the weeds," "on the hook," "push back," "rethink the whole thing," "that's a stretch," "the numbers don't add up," "back of the envelope," "skin in the game," "baked in"
+
+**British English set**: "it's a shambles," "rather," "quite," "I suspect," "no mean feat," "make a hash of it," "on the cards," "full stop," "spot on"
+
+**Anti-patterns**: Never use cliched idioms from the kill list ("low-hanging fruit," "move the needle," "deep dive," "game changer"). Never introduce an idiom that needs explanation. If the reader has to pause, it failed.
+
+**Bad** (region-neutral, formal):
+> "The implementation encountered difficulties that were not anticipated by the planning team."
+
+**Good** (North American, grounded):
+> "The rollout hit a wall nobody saw coming. Three months in, the team was deep in the weeds with no clear way out."
+
+### Syntactic Complexity Controls
+
+AI generates denser subordination than humans: 0.75 dependent clauses per sentence vs. 0.57 for humans. This structural difference is measurable and hard to hide.
+
+**Rules:**
+- Max 1 dependent clause per sentence. If a sentence has 2+, split it
+- Prefer prepositional phrases for relational embedding over explicit connectors
+
+**Bad** (AI-typical, high subordination):
+> "Because the cost increases in regions that have aging infrastructure, which requires additional investment that municipalities cannot afford, the federal government must intervene."
+
+**Good** (human-typical, prepositional embedding):
+> "The cost in regions with aging infrastructure keeps climbing. Municipalities can't absorb it. That leaves Ottawa."
+
+- Flag any paragraph where 2+ sentences start with coordinating conjunctions (Furthermore, Additionally, Moreover). Replace one with a colon, period, or restructure
+- Avoid stacking subordinate clauses. One "because" or "which" per sentence. The second one gets its own sentence
 
 ## 10-Pass Revision Protocol
 
@@ -416,6 +520,7 @@ Run sequentially on any prose before finalizing:
 8. **Selectivity**: Keep 2-3 data points per section. Cut or condense the rest
 9. **Template-break**: If 3+ consecutive sentences use `[metric] [verb] [number]`, rewrite the third. No non-trivial word more than 5× per page
 10. **AI-tell**: Zero em-dashes. Are contractions and short sentences placed where emphasis demands them, or uniformly sprinkled? Uniform distribution is itself a tell
+11. **Human-signal audit**: Check burstiness (adjacent sentences differ by 5+ words? At least one fragment per 500 words?). Verify paragraph length variety (no two consecutive same-length). Confirm at least one rhetorical device (litotes, zeugma, anaphora, or parenthetical aside). Check for at least one colloquialism per 500 words. Ensure no three consecutive same-template paragraphs
 
 ## Integration with Data Analysis
 
