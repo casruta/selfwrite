@@ -34,6 +34,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    ```
    selfwrite/runs/<run-id>/
      versions/          # v0.md, v1.md, ... (artifact snapshots)
+     research/          # gathered sources, data, counterarguments (deep rewrite only)
      rubric.md          # scoring rubric (generated once, locked)
      log.md             # research journal (narrative log of each iteration)
      results.tsv        # structured data (iteration, scores, keep/revert, delta)
@@ -49,7 +50,14 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - Default: 60% iteration loop / 30% distill / 10% summarize
    - Short budget (<15m): 70% / 20% / 10%
    - Long budget (>60m): 55% / 35% / 10%
-6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason`)
+6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tresearch_findings\tresearch_approved`)
+7. **Rewrite mode decision.** Ask the user:
+   > "Do you want me to research and add context as I revise, or focus purely on improving what's already here?"
+   > 1. **Deep rewrite** — I'll research context, counterarguments, and missing evidence alongside each revision. You approve what gets added.
+   > 2. **Simple rewrite** — I'll focus on prose quality, structure, and style. No new content added.
+
+   - If **simple rewrite** (or artifact is code/config/changelog): skip all RESEARCH steps. The loop runs as THINK → TEST → REFLECT only.
+   - If **deep rewrite**: activate the RESEARCH phase (see below). It runs alongside THINK every iteration.
 
 ## Rubric Generation
 
@@ -94,10 +102,11 @@ Save rubric to `rubric.md`.
 4. **ANCHOR BASELINE AT 4-6** — hard rule. A first draft is not excellent. No dimension above 7.
 5. Log scores with evidence to `log.md`, write first row to `results.tsv`
 
-## The Loop: THINK → TEST → REFLECT
+## The Loop: THINK (+ RESEARCH) → TEST → REFLECT
 
 Run until the iteration phase deadline. Minimum 3 iterations per run.
 
+**Simple rewrite** (no RESEARCH):
 ```
        ┌───────────────────────────────┐
        │                               │
@@ -120,6 +129,36 @@ Run until the iteration phase deadline. Minimum 3 iterations per run.
   └────┬────┘                          │
        │                               │
        └───────────────────────────────┘
+```
+
+**Deep rewrite** (with RESEARCH):
+```
+       ┌────────────────────────────────────────┐
+       │                                        │
+       ▼                                        │
+  ┌──────────┐    ┌──────────┐                  │
+  │  THINK   │    │ RESEARCH │  (parallel)      │
+  │ (style)  │    │(substance)│                 │
+  └────┬─────┘    └────┬─────┘                  │
+       │               │                        │
+       ▼               ▼                        │
+  ┌──────────────────────────┐                  │
+  │  SURFACE findings to user │                 │
+  │  User approves/rejects    │                 │
+  └────────────┬─────────────┘                  │
+               │                                │
+               ▼                                │
+          ┌─────────┐                           │
+          │  TEST   │  Revise (style +          │
+          │         │  approved research)       │
+          └────┬────┘                           │
+               │                                │
+               ▼                                │
+          ┌─────────┐                           │
+          │ REFLECT │  Log, check convergence   │
+          └────┬────┘                           │
+               │                                │
+               └────────────────────────────────┘
 ```
 
 ---
@@ -154,12 +193,48 @@ The hypothesis must name: the change, the target dimension, the expected score d
 
 ---
 
+### RESEARCH (deep rewrite only)
+
+**Skip this section entirely in simple-rewrite mode.** RESEARCH runs in parallel with THINK. While THINK diagnoses the weakest stylistic dimension, RESEARCH diagnoses substantive gaps.
+
+**1. Gap Analysis** — Read the current artifact and identify:
+- Claims that lack evidence or sourcing
+- Counterarguments the piece ignores or underweights
+- Context a knowledgeable reader would expect (historical, comparative, causal)
+- Numbers presented without framing (no base year, no per-capita, no comparison)
+
+**2. Gather** — Use available tools to fill gaps:
+- Web search for supporting data, contradicting data, and context
+- Read referenced documents or repos for additional detail
+- Check whether claims are current and accurate
+- Identify the strongest counterargument to the piece's central claim
+- Save gathered sources to `research/` directory
+
+**3. Surface to User** — Present max 3 findings before TEST:
+> **Research findings (iteration N):**
+> 1. [Factual] The piece claims X, but Y source says Z. Include?
+> 2. [Adversarial] Strongest counterargument: ... Address it?
+> 3. [Contextual] Missing comparison to ... Add?
+>
+> **Which findings should I incorporate? (numbers, "all", or "none")**
+
+**4. Incorporate** — Approved findings feed into the TEST revision alongside THINK's stylistic hypothesis. Rejected findings are logged but not added.
+
+**RESEARCH rules:**
+- Never add content without user approval. Zero autonomous additions.
+- Max 3 findings per iteration: one factual, one contextual, one adversarial. Don't overwhelm.
+- Findings must be specific and cite-able. "Consider adding context" is not a finding.
+- **Decay**: Early iterations surface substantive gaps. Past score 7, narrow to fact-checking and counterargument stress-testing. Past 8.5, verification only.
+- Log all findings (approved and rejected) to `log.md` with the user's decision.
+
+---
+
 ### TEST
 
 Execute the hypothesis. Revise the artifact. Measure the result.
 
 **1. Revise**
-Apply the insights from THINK to produce a new version. Address the specific weaknesses identified — do not rewrite everything. Save to `versions/v{N}.md`.
+Apply the insights from THINK to produce a new version. In deep-rewrite mode, also incorporate user-approved RESEARCH findings. Address the specific weaknesses identified — do not rewrite everything. Save to `versions/v{N}.md`.
 
 **2. Score**
 Follow the full **Adversarial Scoring Protocol** (below).
@@ -186,9 +261,10 @@ Log the result. Check convergence signals. Decide what to do next.
 - Questions asked and answers (summarized)
 - Per-dimension scores before and after
 - KEEP/REVERT decision with reasoning
+- (Deep rewrite only) RESEARCH findings surfaced, user's approval/rejection, and how approved findings were incorporated
 
 **2. Log to `results.tsv`** (structured):
-Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}`
+Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{research_findings|none}\t{approved_numbers|none}`
 
 **3. Check Convergence Signals**
 
@@ -253,6 +329,12 @@ Group successful revisions by type:
 - Removal (cutting fluff, redundancy, weak claims)
 
 Identify which question patterns produced the biggest score deltas.
+
+**(Deep rewrite only)** Also extract research patterns:
+- Which finding types did the user consistently approve? (factual, contextual, adversarial)
+- Which did they reject? Why?
+- At what score threshold did research findings stop being useful?
+- What sources or data types were most valuable?
 
 ### Step 3: Generate the Skill File
 Write to `runs/<id>/skill.md`:
