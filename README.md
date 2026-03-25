@@ -1,4 +1,6 @@
-# Selfwrite
+<p align="center">
+  <img src="banner.png" alt="SELFWRITE" width="100%">
+</p>
 
 A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that turns drafts into publication-quality text through scored, time-boxed iteration.
 
