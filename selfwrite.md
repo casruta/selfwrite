@@ -50,7 +50,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - Default: 60% iteration loop / 30% distill / 10% summarize
    - Short budget (<15m): 70% / 20% / 10%
    - Long budget (>60m): 55% / 35% / 10%
-6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tresearch_findings\tresearch_approved`)
+6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations
 7. **Rewrite mode decision.** Ask the user:
    > "Do you want me to research and add context as I revise, or focus purely on improving what's already here?"
    > 1. **Deep rewrite** — I'll research context, counterarguments, and missing evidence alongside each revision. You approve what gets added.
@@ -305,7 +305,7 @@ Log the result. Check convergence signals. Decide what to do next.
 - (Deep rewrite only) RESEARCH findings surfaced, user's approval/rejection, and how approved findings were incorporated
 
 **2. Log to `results.tsv`** (structured):
-Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{research_findings|none}\t{approved_numbers|none}`
+Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}`
 
 **3. Check Convergence Signals**
 
@@ -316,12 +316,84 @@ Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}
 | 3 | **Same dimension targeted 3+ times without improvement** | Over-optimization in one area | Move to a different dimension entirely |
 | 4 | **Alternating keep/revert** | Variables conflated | Isolate: change only ONE thing per iteration |
 | 5 | **Hypothesis contradicts prior results** | Mental model incorrect | Re-read the full artifact fresh; rethink fundamentally |
-| 6 | **All dimensions at 7+** | Approaching ceiling | Switch to polish mode: sentence-level refinement, not structural changes |
+| 6 | **All dimensions at 7+ AND <0.3 gain over 2 keeps** | Ceiling reached | Enter **Breakthrough Protocol** (see below) |
+| 7 | **Breakthrough iteration produced no gain** | Structural ceiling confirmed | Cycle to next breakthrough technique; if all 3 exhausted, accept plateau |
 
 These are advisory signals, not rigid rules. Use judgment. Log which signal triggered and the response chosen.
 
 **4. Time Check**
 Run `date +%s`. If remaining time < 1.5x average iteration time, exit the loop and proceed to distillation. If time remains, return to THINK.
+
+---
+
+## Breakthrough Protocol
+
+When Signal #6 fires (all dimensions at 7+ and gains have stalled below 0.3 for 2 consecutive keeps), the loop shifts from incremental improvement to structural experimentation. The protocol cycles through three techniques. Each feeds into the next.
+
+### Cycling Logic
+
+```
+Breakthrough iteration 1 → Red Team Reader → feeds findings into →
+Breakthrough iteration 2 → Structural Rethink (informed by red team) →
+Breakthrough iteration 3 → Constraint-Based Revision (polish the new structure) →
+If still plateauing → cycle back to Red Team Reader with fresh eyes
+If 2 full cycles (6 breakthrough iterations) produce no gain → accept plateau, proceed to distillation
+```
+
+---
+
+### Technique 1: Red Team Reader
+
+Adopt the persona of a skeptical member of the target audience (from intake). Answer four questions about the current artifact:
+
+1. **Where would I stop reading?** Identify the exact drop-off point -- the sentence or transition where attention breaks
+2. **What would I push back on?** Name the weakest claim or the assertion most likely to provoke "I don't buy that"
+3. **What question does this leave unanswered?** The gap the piece doesn't address that the audience would notice
+4. **What one sentence would I share with a colleague?** The "so what" test -- if nothing is shareable, the piece lacks a clear payoff
+
+Red Team findings feed into the next THINK phase as **constraints**, not suggestions. The revision MUST address the drop-off point and the weakest claim. Log findings to `log.md` with tag `[RED TEAM]`.
+
+---
+
+### Technique 2: Structural Rethink
+
+Re-read the entire artifact as if seeing it for the first time. Discard iteration history. Generate 3 alternative structures:
+
+1. **Inversion**: lead with the conclusion or recommendation, work backward to evidence. Tests whether the current structure buries the lede
+2. **Narrative arc**: restructure around a tension-resolution or before-after frame. Tests whether the piece lacks forward momentum
+3. **Compression**: what if this were half the length? What survives the cut? Tests whether the piece is padded
+
+Pick the most promising alternative and execute it as a single revision. **The Maximum Increment Rule is relaxed to +2 per dimension** for structural rethink iterations, because the artifact is fundamentally reorganized. Log with tag `[STRUCTURAL]`, including all 3 alternatives considered and the rationale for the choice.
+
+---
+
+### Technique 3: Constraint-Based Revision
+
+Apply one constraint from this menu. Rotate through them across iterations:
+
+| Constraint | What it forces |
+|------------|---------------|
+| **Cut 30%** | Remove 30% of word count without losing any data point or claim. Forces elimination of filler, redundancy, and over-explanation |
+| **Rewrite the opening 3 ways** | Generate 3 different openings (different hook, different frame, different first sentence). Pick the strongest. Often the opening is the ceiling |
+| **Remove all hedging** | Delete every hedge word (may, might, could, somewhat, relatively, arguably). Then add back ONLY the hedges that are genuinely necessary. Most aren't |
+| **Kill your best paragraph** | Identify the paragraph you're most proud of. Delete it. Rebuild the piece around its absence. If the piece is better without it, it was a crutch |
+
+Score after applying the constraint. If composite improved: keep. If not: revert, try the next constraint. Log with tag `[CONSTRAINT]`, including which constraint was applied and what was cut or changed.
+
+---
+
+### Breakthrough Logging
+
+Breakthrough iterations use the same `results.tsv` format but with a `mode` column:
+- `regular` for standard THINK → TEST → REFLECT iterations
+- `red_team` for Red Team Reader iterations
+- `structural` for Structural Rethink iterations
+- `constraint` for Constraint-Based Revision iterations
+
+In `log.md`, breakthrough iterations include:
+- `[RED TEAM]`: the four reader questions and answers
+- `[STRUCTURAL]`: the 3 alternatives considered and which was chosen, with rationale
+- `[CONSTRAINT]`: which constraint was applied and what was cut/changed
 
 ---
 
@@ -345,7 +417,7 @@ Every score must cite specific content from the artifact:
 NOT: "Structure: 7/10 — good organization"
 
 ### 4. Maximum Increment Rule
-No dimension increases by more than +1 per iteration. A mediocre revision cannot jump from 4 to 8.
+No dimension increases by more than +1 per iteration. Exception: **Structural Rethink** iterations (Breakthrough Protocol) allow +2 per dimension, because the artifact is fundamentally reorganized. A mediocre revision cannot jump from 4 to 8, but a structural rethink can jump from 7 to 9.
 
 ### 5. Baseline Anchor
 The baseline (v0) scores in the 4-6 range. This is calibration, not false modesty — a first draft is adequate, not excellent.

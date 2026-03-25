@@ -65,7 +65,7 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 - **TEST** -- revise, score every dimension, keep only if the composite improved
 - **REFLECT** -- log the result, check for plateau or over-optimization, adjust strategy
 
-The loop uses the entire time budget.
+The loop uses the entire time budget. When all dimensions reach 7+ and gains stall, the loop shifts into the **Breakthrough Protocol** -- cycling through red team reading, structural rethinks, and constraint-based revision to push past the ceiling that incremental improvement can't reach.
 
 **4. Distillation.** Selfwrite analyzes its log, extracts which questions and revision patterns produced the biggest score jumps, and writes a reusable skill file you can install for future runs.
 
