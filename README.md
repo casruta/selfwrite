@@ -1,6 +1,6 @@
 # Selfwrite
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that takes your draft and iterates it toward publication quality. You give it text and a time budget. It asks what you're writing, who it's for, and what matters most. Then it runs a scored revision loop until time runs out.
+A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that takes your draft and iterates it toward publication quality. You give it text and a time budget. It asks what you're writing, who it's for, and what matters most. Then it chooses between a simple polish or a deep rewrite with live research, and runs a scored revision loop until time runs out.
 
 ## Install
 
@@ -24,51 +24,47 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 
 ## What Happens
 
-**1. Questions.** Selfwrite asks about audience, purpose, tone, constraints, and emphasis. Your answers shape the scoring rubric. Skip them and the rubric defaults to generic dimensions.
+**1. Intake.** Selfwrite asks about audience, purpose, genre, and tone. Follow-ups adapt based on your answers: writing for experts, it asks what they don't already know; editing existing text, it asks where interest drops. Your answers shape the rubric and revision approach. Skip them and it defaults to general audience, explainer genre, conversational tone.
 
-**2. Rubric.** It generates 4-6 scored dimensions tailored to your piece (lede quality, narrative structure, voice, evidence integration, etc.), locks them, and scores your baseline at 4-6.
+**2. Rubric.** It generates 4-6 scored dimensions calibrated to your genre (news, feature, opinion, explainer, investigation), locks them, and scores your baseline at 4-6.
 
-**3. The loop.** Editors make multiple focused passes: one for the lede, one for structure, one for sourcing, one for voice. Each pass catches something the last one missed. Selfwrite gives Claude that same process. Every iteration follows three phases:
+**3. The loop.** You choose the mode:
 
-```
-       ┌───────────────────────────────┐
-       │                               │
-       ▼                               │
-  ┌─────────┐                          │
-  │  THINK  │  Read history, analyze,  │
-  │         │  form hypothesis         │
-  └────┬────┘                          │
-       │                               │
-       ▼                               │
-  ┌─────────┐                          │
-  │  TEST   │  Revise, score, measure  │
-  │         │  Keep or revert          │
-  └────┬────┘                          │
-       │                               │
-       ▼                               │
-  ┌─────────┐                          │
-  │ REFLECT │  Log result, check       │
-  │         │  convergence signals     │
-  └────┬────┘                          │
-       │                               │
-       └───────────────────────────────┘
-```
+- **Simple rewrite** -- THINK → TEST → REFLECT. Prose quality, structure, style
+- **Deep rewrite** -- adds a RESEARCH phase alongside THINK, surfacing missing context, counterarguments, and evidence gaps. You approve what gets incorporated
 
-- **THINK** -- identify the weakest dimension, adopt an expert persona (senior editor, beat reporter, research director), ask 2-3 questions that reference specific content in the draft, form a hypothesis
+Every iteration:
+
+- **THINK** -- identify the weakest dimension, adopt an expert persona, form a hypothesis
 - **TEST** -- revise, score every dimension, keep only if the composite improved
-- **REFLECT** -- log the result, check for plateau or over-optimization, adjust strategy
+- **REFLECT** -- log the result, check for plateau, adjust strategy
 
 The loop uses the entire time budget.
 
 **4. Distillation.** Selfwrite analyzes its log, extracts which questions and revision patterns produced the biggest score jumps, and writes a reusable skill file you can install for future runs.
 
+## Writing Quality
+
+The writing skill powering selfwrite is grounded in research, not heuristics:
+
+- **Sentence architecture** (Gopen & Swan, Pinker): topic-stress positioning, given-new contract, right-branching, dependency distance
+- **Information flow** (Halliday & Hasan): thematic progression, head-to-tail echo transitions, the curiosity loop
+- **Voice** (Clark, Poynter): six controllable dimensions, not a mysterious quality
+- **Explanatory craft**: zoom technique, layered explanation (analogy → mechanism → implication), jargon management
+- **Audience profiles**: measurable targets per audience type (sentence length, jargon, evidence, density)
+- **Detection-resistant patterns**: burstiness, productive imperfection, rhetorical devices, idioms, syntactic controls
+- **12-pass revision protocol**: point-first → kill-list → verb → hedge → voice → so-what → rhythm → selectivity → template-break → AI-tell → human-signal → register check
+
 ## Scoring Safeguards
 
-Self-scoring is honest: name weaknesses before scoring, compare to the previous best version, cite specific content for every score, cap improvement at +1 per dimension per iteration, and anchor the baseline at 4-6.
+Six safeguards: name weaknesses before scoring, compare to previous best, cite specific content for every score, cap gains at +1 per dimension per iteration, anchor baselines at 4-6, and score against the audience from intake.
 
 ## Output
 
-Each run produces a `selfwrite/runs/<run-id>/` directory with version snapshots, a scoring log, and the distilled skill file. See [`runs/nyt-upgrade/`](runs/nyt-upgrade/) for a complete example: 12 iterations, 4.95 to 8.15 composite, all six dimensions at 8+.
+Each run produces a `selfwrite/runs/<run-id>/` directory with version snapshots, a scoring log, and the distilled skill file.
+
+- [`runs/nyt-upgrade/`](runs/nyt-upgrade/) -- 12 iterations, 4.95 → 8.15 composite, all six dimensions at 8+
+- [`runs/skill-upgrade/`](runs/skill-upgrade/) -- 14 iterations, 4.75 → 8.45 composite, research-grounded writing skill upgrade
 
 ## Requirements
 
