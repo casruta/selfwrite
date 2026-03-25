@@ -109,34 +109,68 @@ Duration format: `Nm` (minutes) or `Nh` (hours). Minimum 10 minutes.
 
 The tool detects artifact type from task keywords (code, report, analysis, etc.) and adapts the rubric, expert persona, and scoring dimensions accordingly.
 
-## Example Run: NYT Writing Upgrade
+## What the Output Looks Like
 
-The `runs/nyt-upgrade/` directory contains a complete run that upgraded an analytical writing skill from WSJ/Bloomberg style to NYT journalist quality over 12 iterations.
+Each iteration produces a sample on the same topic so you can see exactly how the writing changes. Here's the NYT upgrade run (`runs/nyt-upgrade/`), which took a writing skill from WSJ/Bloomberg analytical style to NYT journalist quality over 12 iterations.
 
-**Starting point:** A competent writing guide scored at 4.95 composite (baseline range).
+### Baseline (cycle 1, composite 4.95)
 
-**After 12 iterations:**
+> Canada's housing affordability crisis deepened in 2025, with the average home price reaching $782,000, a 6.3% year-over-year increase that outpaced wage growth by more than three to one. The gap between what Canadians earn and what they'd need to buy a home hasn't been this wide since Statistics Canada began tracking the ratio in 1976.
+>
+> The numbers are stark. A household earning the national median income of $74,600 can afford a mortgage of roughly $340,000, less than half the average purchase price. In Toronto and Vancouver, the ratio is worse: median earners can cover barely a third of the average home cost.
 
-| Cycle | Topic | Composite | Delta | Decision |
-|-------|-------|-----------|-------|----------|
-| 1 | Baseline | 4.95 | -- | -- |
-| 2 | Lede types | 5.35 | +0.40 | Keep |
-| 3 | Lede execution | 5.85 | +0.50 | Keep |
-| 4 | Nut graph | 6.25 | +0.40 | Keep |
-| 5 | Story architecture | 6.75 | +0.50 | Keep |
-| 6 | Narrative tension | 7.00 | +0.25 | Keep |
-| 7 | Kicker endings | 7.10 | +0.10 | Keep |
-| 8 | Consolidation | 7.10 | 0 | Keep (19% smaller) |
-| 9 | Scene-setting detail | 7.45 | +0.35 | Keep |
-| 10 | Scene economy | 7.65 | +0.20 | Keep |
-| 11 | Attribution patterns | 8.00 | +0.35 | Keep |
-| 12 | Evidence weaving | 8.15 | +0.15 | Keep |
+Competent. Accurate. Reads like a Bloomberg terminal note. No scene, no people, no tension.
 
-**Result:** 4.95 → 8.15 composite. All six dimensions at 8+. Evidence integration reached 9 -- the first dimension to break the 8 barrier. Zero reverts across 12 iterations.
+### After 6 iterations (composite 7.00)
 
-Key breakthroughs: cycle 6 pushed all dimensions to 7+ (triggering a switch from structural changes to polish mode), and cycle 11's attribution patterns lifted every remaining dimension to 8 simultaneously.
+The topic shifts to a climate scientist profile to test narrative craft. By cycle 6, the loop has added lede types, story architecture, and a question engine:
 
-The distilled skill file (`writing-nyt.md`) captures questions, not answers -- e.g., "Does each piece of evidence resolve a tension the reader already feels?" transfers better than "make evidence narratively necessary."
+> The steel rod slides in too easily. Anya Petrova pulls it free, wipes the mud from the depth mark, and checks: 2.4 meters. She writes the number in her field notebook and doesn't say anything for a while.
+>
+> In 2014, her first summer in Tuktoyaktuk, the same rod stopped at 1.2 meters. The permafrost was solid below that line, frozen for roughly 10,000 years. Now the thaw reaches twice as deep. What took millennia to freeze is unfreezing in a decade.
+>
+> That would be alarming enough on its own. But the problem isn't the thaw. It's what the thaw releases.
+
+Scene-setting. Specific detail (2.4 meters, 2014, Tuktoyaktuk). Tension that pulls the reader forward. The question engine chains paragraphs by leaving one question unanswered at the end of each.
+
+### After 12 iterations (composite 8.15)
+
+By cycle 12, the skill has added attribution patterns, source braiding, and evidence weaving. Same topic, rewritten under the upgraded guidance:
+
+> Anya Petrova uncaps a vial of gas collected from two meters below the tundra and holds it under a portable spectrometer. The reading comes back in seconds. She doesn't flinch, but she writes the number twice, once on her field sheet and once on her phone.
+>
+> She has been measuring methane concentrations at this site for eleven years. For the first seven, the data tracked the IPCC's baseline projections within a comfortable margin. Then the line broke upward.
+>
+> "We kept recalibrating," Petrova said. "We assumed our instruments were drifting. They weren't."
+>
+> Her findings, published last year in Nature Geoscience, showed a 340% increase in methane flux at the Kolyma site between 2015 and 2024. The rate doesn't match any existing permafrost model. Yuri Shakhova, a biogeochemist at the University of Alaska who has studied Arctic methane for two decades, said Petrova's data is consistent with readings from three other Siberian monitoring stations, none of which were designed to detect changes this fast.
+>
+> "The monitoring infrastructure assumes gradual release," Shakhova said. "We're measuring with a ruler and the thing is moving in leaps."
+
+Multiple named sources. Quotes used strategically (never for routine facts). Each piece of evidence resolves a tension the reader already feels. The kicker echoes the opening action with new meaning:
+
+> She caps the vial and seals it for the lab in Moscow, where someone else will run the numbers a third time.
+
+### Score trajectory
+
+| Cycle | Topic | Composite | Delta |
+|-------|-------|-----------|-------|
+| 1 | Baseline | 4.95 | -- |
+| 2 | Lede types | 5.35 | +0.40 |
+| 3 | Lede execution | 5.85 | +0.50 |
+| 4 | Nut graph | 6.25 | +0.40 |
+| 5 | Story architecture | 6.75 | +0.50 |
+| 6 | Narrative tension | 7.00 | +0.25 |
+| 7 | Kicker endings | 7.10 | +0.10 |
+| 8 | Consolidation | 7.10 | 0 |
+| 9 | Scene-setting detail | 7.45 | +0.35 |
+| 10 | Scene economy | 7.65 | +0.20 |
+| 11 | Attribution patterns | 8.00 | +0.35 |
+| 12 | Evidence weaving | 8.15 | +0.15 |
+
+12 iterations. 11 kept, 0 reverted. All six scoring dimensions at 8+. The distilled skill file captures questions, not answers -- "Does each piece of evidence resolve a tension the reader already feels?" transfers better than "make evidence narratively necessary."
+
+The full run -- every sample, every iteration log, every version snapshot -- is in [`runs/nyt-upgrade/`](runs/nyt-upgrade/).
 
 ## Installation
 
