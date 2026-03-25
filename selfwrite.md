@@ -85,6 +85,13 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    | Tone = conversational | More contractions, shorter sentences, colloquialisms OK |
    | Tone = formal | Fewer contractions, complex nominals, measured cadence |
 
+   **Follow-up questions** (ask based on initial answers):
+   - If audience = experts: "What's the one thing they don't already know?" (This is your lede)
+   - If purpose = persuade: "What's the strongest counterargument? Should I address it directly or preempt it?"
+   - If genre = data analysis: "What's the finding that surprised you most?" (Lead with it)
+   - If tone model named: "Should I match their sentence rhythm too, or just the overall register?"
+   - If known weakness = "it's boring": "Where exactly does interest drop? After the opening? In the middle? During the data sections?"
+
    If the user skips all questions, default to: general audience, informative purpose, explainer genre, conversational-but-authoritative tone.
 
 ## Rubric Generation
