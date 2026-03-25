@@ -59,6 +59,34 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - If **simple rewrite** (or artifact is code/config/changelog): skip all RESEARCH steps. The loop runs as THINK → TEST → REFLECT only.
    - If **deep rewrite**: activate the RESEARCH phase (see below). It runs alongside THINK every iteration.
 
+8. **Intake questions.** For prose artifacts, ask the user these questions before generating the rubric. Their answers shape the rubric weights and the revision approach. The user can skip any question (defaults apply).
+
+   **Core questions** (always ask):
+   - **Audience**: Who is reading this? What do they already know about the topic?
+   - **Purpose**: What should the reader know, believe, or do after reading? (inform, persuade, explain, entertain)
+   - **Genre**: What kind of piece is this? (news report, feature, opinion/op-ed, explainer, data analysis, memo, executive summary)
+   - **Tone**: How should it sound? (formal, conversational, urgent, reflective, authoritative) Name a publication or writer as a model if possible
+
+   **Scoping questions** (ask if not obvious from the task):
+   - **Length**: Target word count or length constraint?
+   - **Key claim**: In one sentence, what is the main point?
+   - **Evidence type**: What kind of support matters most? (data, expert quotes, anecdotes, policy examples)
+   - **Known weaknesses**: What's wrong with the current draft? Where does it lose the reader?
+
+   **How answers change the approach**:
+   | Answer | Changes |
+   |--------|---------|
+   | Audience = experts | Allow jargon, skip definitions, increase information density |
+   | Audience = general public | Define terms, use analogies, lower information density |
+   | Purpose = persuade | Lead with thesis, handle counterarguments, emotional hooks |
+   | Purpose = inform | Lead with finding, complete coverage, neutral tone |
+   | Genre = opinion | Commit to a position, crisp evidence, kicker with conviction |
+   | Genre = explainer | Layered explanation (analogy → mechanism), accessible vocabulary |
+   | Tone = conversational | More contractions, shorter sentences, colloquialisms OK |
+   | Tone = formal | Fewer contractions, complex nominals, measured cadence |
+
+   If the user skips all questions, default to: general audience, informative purpose, explainer genre, conversational-but-authoritative tone.
+
 ## Rubric Generation
 
 Generate 4-6 scoring dimensions specific to the task. Each dimension needs:
