@@ -92,6 +92,12 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - If tone model named: "Should I match their sentence rhythm too, or just the overall register?"
    - If known weakness = "it's boring": "Where exactly does interest drop? After the opening? In the middle? During the data sections?"
 
+   **Diagnostic questions** (ask when editing existing text):
+   - "What would the worst version of this piece look like?" (Negative anchors clarify what to avoid)
+   - "Is there a sentence or section you already know is weak?" (Writers usually know; they just haven't fixed it)
+   - "What reaction do you want from the reader at the end? Trust? Alarm? Clarity? Action?"
+   - "If you could keep only one paragraph, which one?" (This reveals the core)
+
    If the user skips all questions, default to: general audience, informative purpose, explainer genre, conversational-but-authoritative tone.
 
 ## Rubric Generation
