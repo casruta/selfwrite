@@ -1,6 +1,8 @@
 # Selfwrite
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that takes your draft and iterates it toward publication quality. You give it text and a time budget. It asks what you're writing, who it's for, and what matters most. Then it chooses between a simple polish or a deep rewrite with live research, and runs a scored revision loop until time runs out.
+A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that turns drafts into publication-quality text through scored, time-boxed iteration.
+
+Give it an opinion column and 20 minutes. A data report and an hour. A skill file and 6 hours. It asks a few questions, then rewrites until time runs out.
 
 ## Install
 
@@ -22,7 +24,7 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 /selfwrite "upgrade writing.md to NYT journalist quality" 6h
 ```
 
-## What Happens
+## How It Works
 
 **1. Intake.** Selfwrite asks about audience, purpose, genre, and tone. Follow-ups adapt based on your answers: writing for experts, it asks what they don't already know; editing existing text, it asks where interest drops. Your answers shape the rubric and revision approach. Skip them and it defaults to general audience, explainer genre, conversational tone.
 
