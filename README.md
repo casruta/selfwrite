@@ -28,7 +28,31 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 
 **2. Rubric.** It generates 4-6 scored dimensions tailored to your piece (lede quality, narrative structure, voice, evidence integration, etc.), locks them, and scores your baseline at 4-6.
 
-**3. The loop.** Each iteration follows three phases:
+**3. The loop.** Editors make multiple focused passes: one for the lede, one for structure, one for sourcing, one for voice. Each pass catches something the last one missed. Selfwrite gives Claude that same process. Every iteration follows three phases:
+
+```
+       ┌───────────────────────────────┐
+       │                               │
+       ▼                               │
+  ┌─────────┐                          │
+  │  THINK  │  Read history, analyze,  │
+  │         │  form hypothesis         │
+  └────┬────┘                          │
+       │                               │
+       ▼                               │
+  ┌─────────┐                          │
+  │  TEST   │  Revise, score, measure  │
+  │         │  Keep or revert          │
+  └────┬────┘                          │
+       │                               │
+       ▼                               │
+  ┌─────────┐                          │
+  │ REFLECT │  Log result, check       │
+  │         │  convergence signals     │
+  └────┬────┘                          │
+       │                               │
+       └───────────────────────────────┘
+```
 
 - **THINK** -- identify the weakest dimension, adopt an expert persona (senior editor, beat reporter, research director), ask 2-3 questions that reference specific content in the draft, form a hypothesis
 - **TEST** -- revise, score every dimension, keep only if the composite improved
