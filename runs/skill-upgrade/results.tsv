@@ -1,1 +1,15 @@
 iteration	target	hypothesis	composite_before	composite_after	delta	decision	reason
+1	sentence_construction	Adding topic-stress, given-new, right-branching from Gopen/Swan/Pinker	4.75	5.30	0.55	keep	Grounded sentence rules in cognitive science
+2	flow_architecture	Adding thematic progression, head-to-tail echo, information density	5.30	5.65	0.35	keep	Paragraph-level flow from Halliday/Hasan
+3	scoring_precision	Adding clarity checklist from editor practices and Coh-Metrix	5.65	5.80	0.15	keep	Editor-grounded quality criteria
+4	research_authority	Adding NYT Standard quote and genre calibration table	5.80	6.05	0.25	keep	NYT Manual of Style direct citation
+5	questioning_depth	Adding intake questions to selfwrite.md and writing-nyt.md	6.05	6.35	0.30	keep	Editorial intake process research
+6	flow_architecture	Adding Voice Modulator and scene-to-data bridges	6.35	6.70	0.35	keep	Clark/Poynter voice dimensions
+7	sentence_construction	Adding zoom technique, layered explanation, jargon management	6.70	7.05	0.35	keep	Pinker, Gentner analogy research
+8	audience_adaptation	Adding audience profiles with measurable targets	7.05	7.35	0.30	keep	Plain language and register research
+9	questioning_depth	Adding follow-up questions based on initial answers	7.35	7.55	0.20	keep	Developmental editing practice
+12	scoring_precision	Adding audience-anchored scoring safeguard	7.55	7.70	0.15	keep	Connects intake to scoring loop
+14	flow_architecture	Adding paragraph theory from Christensen/Braddock	7.70	8.05	0.35	keep	Coordinate vs subordinate sequences
+15	questioning_depth	Adding diagnostic questions for existing text	8.05	8.25	0.20	keep	Developmental editor questions
+16	audience_adaptation	Adding register consistency check as pass 12	8.25	8.35	0.10	keep	Register theory
+17	audience_adaptation	Adding mixed audience handling techniques	8.35	8.45	0.10	keep	Inline context technique
