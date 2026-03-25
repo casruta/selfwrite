@@ -344,6 +344,9 @@ No dimension increases by more than +1 per iteration. A mediocre revision cannot
 ### 5. Baseline Anchor
 The baseline (v0) scores in the 4-6 range. This is calibration, not false modesty — a first draft is adequate, not excellent.
 
+### 6. Audience-Anchored Assessment
+Score against the audience identified in intake, not against abstract quality. A piece written for general public readers should be scored on whether a general reader would follow it, not whether it's technically rigorous. A piece for experts should be scored on analytical depth, not accessibility. Reference the audience profile targets (sentence length, jargon level, evidence type) from the writing skill when scoring.
+
 ### Composite Score
 ```
 composite = sum(weight_i * score_i) for all dimensions
