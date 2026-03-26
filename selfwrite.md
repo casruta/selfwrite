@@ -47,9 +47,9 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - "pipeline", "workflow", "config" → config artifact (appropriate extension)
    - Default → prose artifact (.md)
 5. Calculate phase boundaries:
-   - Default: 55% iteration loop / 5% clean slate review / 30% distill / 10% summarize
-   - Short budget (<15m): 65% / 5% / 20% / 10%
-   - Long budget (>60m): 50% / 5% / 35% / 10%
+   - Default: 50% iteration loop / 10% clean slate review / 30% distill / 10% summarize
+   - Short budget (<15m): 60% / 10% / 20% / 10%
+   - Long budget (>60m): 45% / 10% / 35% / 10%
 
    **Review agent scaling for short budgets**: On budgets under 15 minutes, the three-agent REVIEW step consumes a larger fraction of each iteration. To ensure the minimum 3 iterations:
    - **Under 15m**: Run only the Voice Auditor and Synonym Agent (skip Reader Agent — the coordinator's own reading suffices for short pieces). Re-enable Reader Agent if any dimension drops below 5.
@@ -549,6 +549,7 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 | Over-signposting | Excessive meta-commentary about structure | "As mentioned earlier," "As we will see," "It's worth noting" |
 | Qualitative vagueness | Magnitude words without specifics | "significant increase" (no number), "growing concern" (no evidence) |
 | Vague referents | Sentence opens with "this," "these," "such," or "the pattern" without naming what it refers to | "This suggests..." "Such convergence points to..." |
+| Academic/archaic phrasing | Nominalized verbs, inverted constructions, or abstractions where plain contemporary language would work. The sentence should sound natural in The Economist or Globe and Mail, not in a medical journal | "persisted across the full series" (say "lasted the entire period"), "the compositional pattern decoupled" (say "the types of crime began moving in opposite directions") |
 
 **Transition Diversity Rules**:
 
@@ -627,6 +628,7 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
 - Never substitute proper nouns, technical terms, or quoted material
 - Never substitute words that are already unusual or distinctive; these are humanizing
 - Each substitution must include reasoning for why the original word is the "default" choice
+- After proposing a substitution, read the full sentence with the synonym in place. If the sentence sounds awkward, forced, or unnatural when read aloud, reject the substitution. The test: would a journalist at The Economist or Globe and Mail write this sentence? If not, the synonym fails regardless of register match
 - If the draft already uses diverse vocabulary, propose fewer substitutions (the text doesn't need help)
 - The coordinator makes the final accept/reject decision during REVISE; the Synonym Agent only proposes
 
@@ -766,7 +768,7 @@ composite = sum(weight_i * score_i) for all dimensions
 
 ## Clean Slate Review
 
-Time allocation: ~5% of total budget. Runs once, after the iteration loop exits and before distillation.
+Time allocation: ~10% of total budget. Runs in a loop after the iteration loop exits and before distillation. The loop continues until the Clean Slate Agent returns zero questions or 3 cycles have passed.
 
 **Purpose**: A final-pass review by an agent with **zero context**. This agent has never seen the rubric, the iteration log, or any prior version. It receives only the final artifact text. Its job is to read the document cold, as a complete stranger would, and flag anything that does not make sense.
 
@@ -782,6 +784,8 @@ Iterative review agents (Reader, Voice Auditor, Synonym) develop blind spots bec
 4. Are there claims that feel unsupported, where a skeptical reader would ask "says who?" or "based on what?"
 5. Does the document flow logically from section to section, or does it jump without transition?
 6. Are there internal contradictions (the same metric stated differently in two places, or a claim in Section 3 that conflicts with data in Section 1)?
+7. Does every sentence sound natural when read aloud in contemporary North American or British English? Flag any sentence that sounds academic, archaic, or stilted. Common tells: "persisted across," "the full series," "compositional pattern," "decoupled from the aggregate trend." The test: would this sentence appear in The Economist or the Globe and Mail? If not, flag it.
+8. Does every sentence use contemporary word order and phrasing? Flag inverted constructions, nominalized verbs where a simple verb would work ("a reduction occurred" vs. "it fell"), and unnecessary abstractions ("the compositional pattern" vs. "what types of crime are changing").
 
 **Output format**:
 ```
@@ -793,11 +797,24 @@ Iterative review agents (Reader, Voice Auditor, Synonym) develop blind spots bec
 ...
 ```
 
+**Resolution loop**:
+```
+cycle = 1
+WHILE cycle <= 3:
+  1. Launch Clean Slate Agent on current artifact
+  2. IF zero questions → exit loop, proceed to distillation
+  3. Coordinator resolves every question by editing the artifact
+  4. IF same questions recur from the previous cycle → accept and log as unresolvable
+  5. Save updated artifact
+  6. cycle += 1
+IF cycle > 3 and questions remain → log remaining issues in summary, proceed to distillation
+```
+
 **Resolution rules**:
 - The coordinator must resolve **every question** by editing the final artifact. No question may be dismissed without a text change.
 - Resolution options: add a clarifying phrase, rewrite the sentence for clarity, add a data reference, or correct the inconsistency.
 - If a question reveals a factual error that cannot be fixed without research (and the run is in simple-rewrite mode), flag it in the summary as an unresolved issue rather than fabricating a fix.
-- After resolving all questions, save the updated artifact as the final version.
+- After resolving all questions in a cycle, re-launch the Clean Slate Agent on the updated text. Fixes often introduce new awkward phrasing; the loop catches this.
 
 **Behavioral rules**:
 - Read the text as if encountering it for the first time. Do not assume any background knowledge beyond what the text itself provides.
