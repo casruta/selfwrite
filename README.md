@@ -77,7 +77,7 @@ Selfwrite opens with an intake: questions about your audience, purpose, genre, a
   │  AGENT   │  │ AUDITOR  │  │  AGENT   │                │
   └────┬─────┘  └────┬─────┘  └────┬─────┘                │
        │             │             │                      │
-       ▼              ▼             ▼                     │
+       ▼             ▼             ▼                      │
   ┌──────────────────────────────────────┐                │
   │  REVISE  │  Incorporate annotations  │                │
   └────┬─────────────────────────────────┘                │
