@@ -2,9 +2,9 @@
   <img src="banner.png" alt="SELFWRITE" width="100%">
 </p>
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that turns drafts into publication-quality text through scored, time-boxed iteration.
+A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that turns drafts into publication-quality text through scored, time-boxed, multi-agent iteration.
 
-Give it an opinion column and 20 minutes. A data report and an hour. A skill file and 6 hours. It asks a few questions, then rewrites until time runs out.
+Give it an opinion column and 20 minutes. A data report and an hour. A skill file and 6 hours. It asks a few questions, then rewrites until time runs out -- with three independent review agents catching blind spots and breaking AI-detectable patterns at every iteration.
 
 ## Install
 
@@ -28,7 +28,7 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 
 ## How It Works
 
-**1. Intake.** Selfwrite asks about audience, purpose, genre, and tone. Follow-ups adapt based on your answers: writing for experts, it asks what they don't already know; editing existing text, it asks where interest drops. Your answers shape the rubric and revision approach. Skip them and it defaults to general audience, explainer genre, conversational tone.
+**1. Intake.** Selfwrite asks about audience, purpose, genre, and tone. Follow-ups adapt based on your answers: writing for experts, it asks what they don't already know; editing existing text, it asks where interest drops. Your answers shape the rubric and revision approach. Skip them and it defaults to general audience, explainer genre, authoritative journalism tone (register level 3).
 
 **2. Rubric.** It generates 4-6 scored dimensions calibrated to your genre (news, feature, opinion, explainer, investigation), locks them, and scores your baseline at 4-6.
 
@@ -86,7 +86,19 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 
 The loop uses the entire time budget. When all dimensions reach 7+ and gains stall, the loop shifts into the **Breakthrough Protocol** -- cycling through red team reading, structural rethinks, and constraint-based revision to push past the ceiling that incremental improvement can't reach.
 
-**4. Distillation.** Selfwrite analyzes its log, extracts which questions and revision patterns produced the biggest score jumps, and writes a reusable skill file you can install for future runs.
+**4. Distillation.** Selfwrite analyzes its log, extracts which questions and revision patterns produced the biggest score jumps, captures humanization techniques (which synonym substitutions worked, which AI-tell patterns were hardest to eliminate, which transition strategies produced the most natural flow), and writes a reusable skill file you can install for future runs.
+
+## Review Agents
+
+Every draft passes through three independent agents before revisions are finalized. Each runs as a fresh subagent with no context carryover between iterations, providing genuine cognitive separation from the main loop.
+
+| Agent | What it catches | Why it matters |
+|-------|----------------|----------------|
+| **Reader Agent** | Engagement drops, comprehension failures, credibility gaps, pacing issues | The same "mind" that wrote the text can't objectively evaluate it -- a separate reader perspective catches where real humans would stop reading |
+| **Voice Auditor** | AI-tell patterns (10-pattern catalog), sentence template repetition, rhythm monotony, transition diversity violations, register drift | Directly targets the detectable patterns that make text identifiable as machine-generated |
+| **Synonym Agent** | Default/predictable word choices that AI detection tools flag | Suggests less-predictable synonyms matched to the target register, breaking the statistical signature of always choosing the most probable token |
+
+On short budgets (<15m), agents scale down automatically: under 15m only Voice Auditor and Synonym Agent run; under 10m only Synonym Agent runs.
 
 ## Writing Quality
 
@@ -97,7 +109,7 @@ The writing skill powering selfwrite is grounded in research, not heuristics:
 - **Voice** (Clark, Poynter): six controllable dimensions, not a mysterious quality
 - **Explanatory craft**: zoom technique, layered explanation (analogy → mechanism → implication), jargon management
 - **Audience profiles**: measurable targets per audience type (sentence length, jargon, evidence, density)
-- **Detection-resistant patterns**: burstiness, productive imperfection, rhetorical devices, idioms, syntactic controls
+- **Detection-resistant patterns**: multi-agent review (Reader, Voice Auditor, Synonym agents), synonym probability shifting, transition diversity enforcement, rhythm breaking, plus burstiness, productive imperfection, rhetorical devices, idioms, syntactic controls
 - **12-pass revision protocol**: point-first → kill-list → verb → hedge → voice → so-what → rhythm → selectivity → template-break → AI-tell → human-signal → register check
 
 ## Scoring Safeguards
@@ -106,7 +118,7 @@ Eight safeguards: name weaknesses before scoring, compare to previous best, cite
 
 ## Output
 
-Each run produces a `selfwrite/runs/<run-id>/` directory with version snapshots, a scoring log, and the distilled skill file.
+Each run produces a `selfwrite/runs/<run-id>/` directory with version snapshots, a scoring log (including per-iteration review agent annotation counts and synonym acceptance rates), and a distilled skill file with a Humanization Techniques section.
 
 - [`runs/nyt-upgrade/`](runs/nyt-upgrade/) -- 12 iterations, 4.95 → 8.15 composite, all six dimensions at 8+
 - [`runs/skill-upgrade/`](runs/skill-upgrade/) -- 14 iterations, 4.75 → 8.45 composite, research-grounded writing skill upgrade
