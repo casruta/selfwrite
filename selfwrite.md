@@ -47,9 +47,9 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - "pipeline", "workflow", "config" → config artifact (appropriate extension)
    - Default → prose artifact (.md)
 5. Calculate phase boundaries:
-   - Default: 60% iteration loop / 30% distill / 10% summarize
-   - Short budget (<15m): 70% / 20% / 10%
-   - Long budget (>60m): 55% / 35% / 10%
+   - Default: 55% iteration loop / 5% clean slate review / 30% distill / 10% summarize
+   - Short budget (<15m): 65% / 5% / 20% / 10%
+   - Long budget (>60m): 50% / 5% / 35% / 10%
 
    **Review agent scaling for short budgets**: On budgets under 15 minutes, the three-agent REVIEW step consumes a larger fraction of each iteration. To ensure the minimum 3 iterations:
    - **Under 15m**: Run only the Voice Auditor and Synonym Agent (skip Reader Agent — the coordinator's own reading suffices for short pieces). Re-enable Reader Agent if any dimension drops below 5.
@@ -446,7 +446,7 @@ Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}
 These are advisory signals, not rigid rules. Use judgment. Log which signal triggered and the response chosen.
 
 **4. Time Check**
-Run `date +%s`. If remaining time < 1.5x average iteration time, exit the loop and proceed to distillation. If time remains, return to THINK.
+Run `date +%s`. If remaining time < 1.5x average iteration time, exit the loop and proceed to **Clean Slate Review**. If time remains, return to THINK.
 
 ---
 
@@ -762,6 +762,50 @@ After Reader Agent and Voice Auditor annotations are incorporated during REVISE,
 ```
 composite = sum(weight_i * score_i) for all dimensions
 ```
+
+## Clean Slate Review
+
+Time allocation: ~5% of total budget. Runs once, after the iteration loop exits and before distillation.
+
+**Purpose**: A final-pass review by an agent with **zero context**. This agent has never seen the rubric, the iteration log, or any prior version. It receives only the final artifact text. Its job is to read the document cold, as a complete stranger would, and flag anything that does not make sense.
+
+Iterative review agents (Reader, Voice Auditor, Synonym) develop blind spots because they have watched the text evolve. They unconsciously fill gaps from memory. The Clean Slate Agent catches what they cannot.
+
+**Input** (provided in agent prompt):
+- The final artifact text. Nothing else. No rubric, no log, no scores, no iteration history, no audience description.
+
+**What it checks**:
+1. Does every sentence make sense on its own, without needing to read a glossary or earlier section?
+2. Do data references add up? If the text says "46% decline," can the reader verify from the numbers given (e.g., 166.9 to 90.2)?
+3. Are there terms or concepts used without sufficient explanation for a first-time reader?
+4. Are there claims that feel unsupported, where a skeptical reader would ask "says who?" or "based on what?"
+5. Does the document flow logically from section to section, or does it jump without transition?
+6. Are there internal contradictions (the same metric stated differently in two places, or a claim in Section 3 that conflicts with data in Section 1)?
+
+**Output format**:
+```
+## Clean Slate Review
+
+### Questions (each must be resolved before committing)
+1. [Para N]: "[quoted text]" — [question: what is unclear, contradictory, or unsupported]
+2. [Para N]: "[quoted text]" — [question]
+...
+```
+
+**Resolution rules**:
+- The coordinator must resolve **every question** by editing the final artifact. No question may be dismissed without a text change.
+- Resolution options: add a clarifying phrase, rewrite the sentence for clarity, add a data reference, or correct the inconsistency.
+- If a question reveals a factual error that cannot be fixed without research (and the run is in simple-rewrite mode), flag it in the summary as an unresolved issue rather than fabricating a fix.
+- After resolving all questions, save the updated artifact as the final version.
+
+**Behavioral rules**:
+- Read the text as if encountering it for the first time. Do not assume any background knowledge beyond what the text itself provides.
+- Be blunt. If something is confusing, say so. Do not give the text the benefit of the doubt.
+- Minimum 3 questions, maximum 12. Fewer than 3 means the review was not thorough enough. More than 12 means the text needs another iteration, not a longer review.
+- Every question must cite the specific passage and explain why it is unclear.
+- Never suggest rewrites. Only ask questions. The coordinator decides how to fix.
+
+---
 
 ## Distillation Phase
 
