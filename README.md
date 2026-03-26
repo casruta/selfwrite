@@ -4,13 +4,12 @@
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-blue)
 
-A Claude Code skill that rewrites drafts into polished prose through scored, time-boxed, multi-agent iteration.
+A Claude Code skill that polishes up the writing making it indistunguishable from human-written content by applying various linguistic, structural, and grammatical principles (and no, this segment was not written by this product). 
 
-Give it any text and a time budget. Three review agents run each cycle: one catches where readers would disengage, one hunts AI-detectable patterns in your prose, one swaps predictable word choices. After time runs out, a fourth agent reads the final draft cold with zero prior context. The skill then distills what worked into a skill file you can reuse, so every future run in the same domain starts stronger.
+The skill is supposed to supplement dense, data-heavy text whilst utilizing point-first paragraph structure to optimize for maximum context and explanatory value while inserting minor fluff here and there to bamboozle the AI text detectors. 
 
-The result: prose that reads like it was edited by a human, scores that climb 3-4 points on a 10-point scale, and a permanent record of which revision strategies actually moved the needle.
 
-## Install
+## How to install it 
 
 ```bash
 cp selfwrite.md ~/.claude/skills/selfwrite.md
@@ -20,7 +19,7 @@ Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). No o
 
 Verify by running `/selfwrite` in any project.
 
-## Usage
+## How to use it 
 
 ```
 /selfwrite "task description" <duration>
@@ -71,11 +70,11 @@ Selfwrite opens with an intake: questions about your audience, purpose, genre, a
   └────┬────┘                                             │
        │                                                  │
        ▼                                                  │
-  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
-  │  READER  │  │  VOICE   │  │ SYNONYM  │  (parallel)   │
-  │  AGENT   │  │ AUDITOR  │  │  AGENT   │               │
-  └────┬─────┘  └────┬─────┘  └────┬─────┘               │
-       │              │             │                     │
+  ┌──────────┐  ┌──────────┐  ┌──────────┐                │
+  │  READER  │  │  VOICE   │  │ SYNONYM  │  (parallel)    │
+  │  AGENT   │  │ AUDITOR  │  │  AGENT   │                │
+  └────┬─────┘  └────┬─────┘  └────┬─────┘                │
+       │             │             │                      │
        ▼              ▼             ▼                     │
   ┌──────────────────────────────────────┐                │
   │  REVISE  │  Incorporate annotations  │                │
