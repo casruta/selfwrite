@@ -4,9 +4,21 @@
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-blue)
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that turns drafts into publication-quality text through scored, time-boxed, multi-agent iteration.
+A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that rewrites drafts into polished prose through scored, time-boxed, multi-agent iteration.
 
-Give it an opinion column and 20 minutes. A data report and an hour. A skill file and 6 hours. It asks a few questions, then rewrites until time runs out, with four independent review agents catching blind spots, breaking AI-detectable patterns, and verifying the final output makes sense to a first-time reader.
+Give it any text and a time budget. Three review agents run each cycle: one checks engagement, one flags AI-tell patterns, one swaps predictable word choices. After time runs out, a fourth agent reads the final draft cold with zero context. The skill then distills what worked into a skill file you can reuse.
+
+## Contents
+
+- [Install](#install)
+- [Usage](#usage)
+- [Modes](#modes)
+- [The Loop](#the-loop)
+- [Review Agents](#review-agents)
+- [Scoring](#scoring)
+- [Output](#output)
+- [Tips](#tips)
+- [Example Runs](#example-runs)
 
 ## Install
 
@@ -14,13 +26,17 @@ Give it an opinion column and 20 minutes. A data report and an hour. A skill fil
 cp selfwrite.md ~/.claude/skills/selfwrite.md
 ```
 
-## Use
+Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). No other dependencies.
+
+Verify by running `/selfwrite` in any project.
+
+## Usage
 
 ```
 /selfwrite "task description" <duration>
 ```
 
-Duration: `Nm` or `Nh`. Minimum 10 minutes.
+Duration uses `Nm` or `Nh` format. Minimum 10 minutes.
 
 ```
 /selfwrite "tighten this opinion column on housing policy" 20m
@@ -28,16 +44,28 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 /selfwrite "upgrade writing.md to NYT journalist quality" 6h
 ```
 
-## How It Works
+**Recommended budgets:**
 
-**1. Intake.** Selfwrite asks about audience, purpose, genre, and tone. Follow-ups adapt based on your answers: writing for experts, it asks what they don't already know; editing existing text, it asks where interest drops. Your answers shape the rubric and revision approach. Skip them and it defaults to general audience, explainer genre, authoritative journalism tone (register level 3).
+| Task | Budget |
+|------|--------|
+| Quick edits (tighten a column, polish a README) | 15-30m |
+| Full rewrites (reports, memos, skill files) | 45m-2h |
+| Deep research rewrites (add evidence, counterarguments) | 1-6h |
 
-**2. Rubric.** It generates 4-6 scored dimensions calibrated to your genre (news, feature, opinion, explainer, investigation), locks them, and scores your baseline at 4-6.
+## Modes
 
-**3. The loop.** You choose the mode:
+Selfwrite asks which mode you want at the start of each run.
 
-- **Simple rewrite**: THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT. Prose quality, structure, style
-- **Deep rewrite**: adds a RESEARCH phase alongside THINK, surfacing missing context, counterarguments, and evidence gaps. You approve what gets incorporated
+| | Simple Rewrite | Deep Rewrite |
+|---|---|---|
+| **Focus** | Style, structure, prose quality | All of simple, plus substance |
+| **New content** | No. Works only with what's there | Yes. Surfaces missing context, counterarguments, evidence gaps |
+| **User approval** | Not needed | Required before any new content is added |
+| **Best for** | Drafts that need polish | Drafts that need both polish and substance |
+
+## The Loop
+
+Selfwrite opens with an intake: questions about your audience, purpose, genre, and tone. Your answers shape a scoring rubric with 4-6 weighted dimensions (each scored 1-10). The baseline is anchored at 4-6 by design, so scores have room to climb. Then the loop begins:
 
 ```
        ┌──────────────────────────────────────────────────┐
@@ -76,65 +104,83 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
        └──────────────────────────────────────────────────┘
 ```
 
-- **THINK**: identify the weakest dimension, adopt an expert persona (senior editor, beat reporter, research director), ask 2-3 questions that reference specific content in the draft, form a hypothesis
-- **DRAFT**: apply THINK insights to produce a candidate revision (targeted changes only, not wholesale rewrite)
-- **REVIEW**: three independent agents evaluate the draft in parallel:
-  - **Reader Agent**: reads as the target audience, flags engagement drops, comprehension failures, concept stacking, scroll-back dependencies
-  - **Voice Auditor**: hunts for AI-tell patterns (sentence template repetition, rhythm monotony, hedge clustering, transition monotony, register violations, em-dash usage)
-  - **Synonym Agent**: suggests less-predictable synonym substitutions (1 per 2 sentences, max 2 per paragraph) to break AI detection's statistical signature
-- **REVISE**: coordinator incorporates review annotations, triaging by severity (engagement drops first, AI-tell patterns second, synonym substitutions third)
-- **SCORE**: adversarial scoring protocol with 8 safeguards
-- **REFLECT**: log the result, check for plateau or over-optimization, adjust strategy
+Each step targets the weakest dimension:
 
-The loop uses the entire time budget. When all dimensions reach 7+ and gains stall, the loop shifts into the **Breakthrough Protocol**, cycling through red team reading, structural rethinks, and constraint-based revision to push past the ceiling that incremental improvement can't reach.
+- **THINK**: Identify the lowest-scoring dimension, adopt an expert persona, ask 2-3 questions that reference specific content, form a testable hypothesis
+- **DRAFT**: Apply focused changes to test the hypothesis (not a wholesale rewrite)
+- **REVIEW**: Three separate agents evaluate the draft in parallel (see [Review Agents](#review-agents))
+- **REVISE**: Fold in agent annotations, triaging by severity
+- **SCORE**: Adversarial scoring with 8 safeguards (see [Scoring](#scoring))
+- **REFLECT**: Log the result, check for convergence or plateau, adjust strategy
 
-**4. Clean Slate Review.** After the iteration loop exits, a separate agent with **zero context** reads the final artifact cold. It has never seen the rubric, the iteration log, or any prior version. It flags anything that doesn't make sense to a first-time reader: unclear sentences, unsupported claims, unexplained jargon, internal contradictions, data that doesn't add up. Every question it raises must be resolved by editing the text before committing.
+Every version is kept. If a revision damages more than it improves, the loop reverts and tries a different angle.
 
-**5. Distillation.** Selfwrite analyzes its log, extracts which questions and revision patterns produced the biggest score jumps, captures humanization techniques (which synonym substitutions worked, which AI-tell patterns were hardest to eliminate, which transition strategies produced the most natural flow), and writes a reusable skill file you can install for future runs.
+Once all dimensions reach 7+ and gains stall, the loop shifts into the **Breakthrough Protocol**: reading as a skeptical member of the target audience, testing alternative document structures, and applying hard constraints (cut 30% of word count, rewrite the opening three ways, remove all hedging). These push past the plateau where incremental edits stop helping.
+
+After the loop exits, a **Clean Slate Review** runs. A separate agent with zero context reads the final text cold and flags anything unclear, unsupported, or confusing to a first-time reader. Every question that agent raises gets resolved by editing the text before the run ends.
 
 ## Review Agents
 
-Four independent agents review the text across two phases:
+Four agents review the text across two phases:
 
-**During iteration (every cycle):** Three agents evaluate each draft in parallel, with no context carryover between iterations.
+| Agent | Phase | What it catches |
+|-------|-------|----------------|
+| **Reader Agent** | Every iteration | Engagement drops, comprehension failures, too many technical terms in one sentence, references that force the reader to scroll back |
+| **Voice Auditor** | Every iteration | AI-tell patterns, sentence template repetition, rhythm monotony, overuse of the same transition words, formality-level drift from the target register |
+| **Synonym Agent** | Every iteration | Predictable word choices that AI detection tools flag; suggests less-predictable substitutions (max 2 per paragraph, max 8 per review) |
+| **Clean Slate Agent** | Once, after loop | Reads final text with zero context; flags anything unclear, unsupported, contradictory, or confusing to a first-time reader |
 
-| Agent | What it catches | Why it matters |
-|-------|----------------|----------------|
-| **Reader Agent** | Engagement drops, comprehension failures, credibility gaps, pacing issues, concept stacking (3+ technical terms in one sentence), scroll-back dependencies (terms used without inline reminder) | A separate reader perspective catches where real humans would stop reading or lose the thread |
-| **Voice Auditor** | AI-tell patterns (10-pattern catalog), sentence template repetition, rhythm monotony, transition diversity violations, register drift, em-dash usage (zero tolerance) | Directly targets the detectable patterns that make text identifiable as machine-generated |
-| **Synonym Agent** | Default/predictable word choices that AI detection tools flag | Suggests less-predictable synonyms at reduced density (1 per 2 sentences, max 2 per paragraph, max 8 total) to avoid awkward over-substitution |
+The three per-cycle agents launch fresh each cycle with no memory of prior runs, so blind spots don't accumulate. Short budgets trigger automatic scaling: under 15 minutes, only Voice Auditor and Synonym Agent run; under 10, only Synonym Agent. The Clean Slate Agent always runs.
 
-**After iteration (once, before distillation):**
+## Scoring
 
-| Agent | What it checks | Why it matters |
-|-------|----------------|----------------|
-| **Clean Slate Agent** | Reads the final text with zero context (no rubric, no log, no history). Flags anything unclear, unsupported, contradictory, or dependent on definitions the reader may have forgotten | Iterative agents develop blind spots from watching the text evolve. A cold reader catches what they cannot |
+Each cycle uses adversarial scoring with 8 safeguards against self-inflation:
 
-On short budgets (<15m), iteration agents scale down automatically: under 15m only Voice Auditor and Synonym Agent run; under 10m only Synonym Agent runs. The Clean Slate Agent always runs.
+1. Name weaknesses before assigning any scores
+2. Compare each dimension to the previous best version
+3. Cite specific content for every score (no vague "good organization")
+4. Cap gains at +1 per dimension per iteration
+5. Anchor baselines at 4-6 (a first draft isn't excellent)
+6. Score against the audience identified during intake
+7. Enforce register compliance (e.g., rhetorical questions and first-person are forbidden at institutional register levels)
+8. If a review agent flagged an engagement drop or comprehension failure and the revision didn't fix it, that dimension's score can't increase
 
-## Writing Quality
-
-The writing skill powering selfwrite is grounded in research, not heuristics:
-
-- **Sentence architecture** (Gopen & Swan, Pinker): topic-stress positioning, given-new contract, right-branching, dependency distance
-- **Information flow** (Halliday & Hasan): thematic progression, head-to-tail echo transitions, the curiosity loop
-- **Voice** (Clark, Poynter): six controllable dimensions, not a mysterious quality
-- **Explanatory craft**: zoom technique, layered explanation (analogy → mechanism → implication), jargon management
-- **Audience profiles**: measurable targets per audience type (sentence length, jargon, evidence, density)
-- **Detection-resistant patterns**: multi-agent review (Reader, Voice Auditor, Synonym agents), synonym probability shifting, transition diversity enforcement, rhythm breaking, plus burstiness, productive imperfection, rhetorical devices, idioms, syntactic controls
-- **12-pass revision protocol**: point-first → kill-list → verb → hedge → voice → so-what → rhythm → selectivity → template-break → AI-tell → human-signal → register check
-
-## Scoring Safeguards
-
-Eight safeguards: name weaknesses before scoring, compare to previous best, cite specific content for every score, cap gains at +1 per dimension per iteration, anchor baselines at 4-6, score against the audience from intake, enforce register compliance (editorial anti-patterns are forbidden at formal register levels), and external review integration (unaddressed high-severity review agent annotations cap the relevant dimension).
+If a revision improves the composite score, it's kept. If it damages two or more dimensions, it's reverted regardless of gains elsewhere.
 
 ## Output
 
-Each run produces a `selfwrite/runs/<run-id>/` directory with version snapshots, a scoring log (including per-iteration review agent annotation counts and synonym acceptance rates), and a distilled skill file with a Humanization Techniques section.
+Each run creates a `selfwrite/runs/<run-id>/` directory:
 
-- [`runs/nyt-upgrade/`](runs/nyt-upgrade/): 12 iterations, 4.95 → 8.15 composite, all six dimensions at 8+
-- [`runs/skill-upgrade/`](runs/skill-upgrade/): 14 iterations, 4.75 → 8.45 composite, research-grounded writing skill upgrade
+```
+versions/       # v0.md, v1.md, ... (every snapshot)
+rubric.md       # scoring dimensions (locked after generation)
+log.md          # narrative journal of each iteration
+results.tsv     # structured scores per iteration
+skill.md        # distilled skill file
+summary.md      # final metrics and learnings
+```
+
+The **distilled skill file** is the lasting output. It records which questions, revision patterns, and writing techniques drove the largest score gains. Install it to carry those patterns into future runs:
+
+```bash
+cp selfwrite/runs/<run-id>/skill.md ~/.claude/skills/<domain>.md
+```
+
+## Tips
+
+- **Answer intake questions honestly.** Vague answers ("general audience," "just make it better") yield vague rewrites. Specific answers ("skeptical CFO reading a one-pager," "cut 30% without losing data") yield precise ones.
+- **Simple rewrite for polish, deep rewrite for substance.** If the draft has everything it needs and just reads poorly, use simple. If it's missing evidence, context, or counterarguments, use deep.
+- **Longer budgets improve results, but returns diminish past 2h for short pieces.** A 20-minute column tightening often gains 2-3 points on the weighted composite (a 1-10 scale). A 6-hour deep rewrite of a long report can gain 4+.
+- **Name a publication model during intake.** Saying "write like the Economist" or "Globe and Mail feature tone" gives the voice system a concrete target. Selfwrite maps your answer to one of five register levels: institutional, formal analytical, authoritative journalism, accessible journalism, or conversational.
+- **Check the distilled skill file after each run.** If the patterns hold up, install it. Future runs in the same domain start stronger.
+
+## Example Runs
+
+| Run | Iterations | Start | Final | Delta |
+|-----|-----------|-------|-------|-------|
+| [`nyt-upgrade/`](runs/nyt-upgrade/) | 12 | 4.95 | 8.15 | +3.20 |
+| [`skill-upgrade/`](runs/skill-upgrade/) | 14 | 4.75 | 8.45 | +3.70 |
 
 ## Requirements
 
-- Claude Code CLI
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)
