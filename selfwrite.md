@@ -143,6 +143,23 @@ These techniques are appropriate at register 4-5 but **forbidden** at register 1
 | Dramatic pacing | "Now the pieces come together." | Narrative device; presumes the reader is following a story arc | Omit. Let the analysis section speak for itself. |
 | Kicker closings | "It is whether the institutions can earn the credibility to be believed." | Rhetorical flourish that belongs in an opinion piece | State the conclusion plainly: "Addressing these five factors would narrow the gap between reported crime trends and public perception." |
 
+### Register-Gated Humanization (encourage at appropriate levels)
+
+Not all human writing patterns are inappropriate. Some make text sound more natural without sacrificing formality. The Voice Auditor should **allow** (not penalize) these patterns at the indicated register levels.
+
+| Pattern | Register 1 | Register 2 | Register 3+ | Example |
+|---------|-----------|-----------|-------------|---------|
+| Short breathing-room sentences (1-5 words, no analytical content, exist to give the reader a beat) | Forbidden | Allow 1-2 per section | Allow freely | "Crime in BC is falling." before the data paragraph |
+| Uneven paragraph length (mixing 1-sentence and 5-sentence paragraphs) | Allow | Allow | Allow | A 1-sentence paragraph followed by a 5-sentence paragraph is natural, not an error |
+| Deliberate repetition for clarity ("There's X. There's also Y.") | Forbidden | Allow sparingly | Allow freely | Repeating a sentence structure 2x for parallel emphasis is human, not a template |
+| First person in opinion/recommendation sections | Forbidden | Allow "we" in recommendations only | Allow "I" and "we" | "We recommend reviewing the allocation" in an Implications section |
+| Rhetorical questions | Forbidden | Forbidden | Allow sparingly | Only at Register 3+: "What drove the decline?" |
+| Filler transitions ("There's a lot to like") | Forbidden | Forbidden | Allow at 4-5 | Too casual for analytical prose |
+| Cliches and vivid imprecision ("slim pickings") | Forbidden | Forbidden | Allow at 4-5 | Undercuts analytical credibility at formal registers |
+| Sentence fragments for emphasis | Forbidden | Forbidden | Allow at 4+ | "Not even close." works in op-eds, not in reports |
+
+**Key principle:** The Voice Auditor should stop penalizing patterns in the "Allow" column for the active register. An uneven paragraph or a short breathing-room sentence at Register 2 is a feature, not a defect. Penalizing these produces the uniform, mechanical rhythm that makes AI text detectable.
+
 ---
 
 ## Rubric Generation
