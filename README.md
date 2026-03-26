@@ -2,6 +2,8 @@
   <img src="banner.png" alt="SELFWRITE" width="100%">
 </p>
 
+![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-blue)
+
 A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that turns drafts into publication-quality text through scored, time-boxed, multi-agent iteration.
 
 Give it an opinion column and 20 minutes. A data report and an hour. A skill file and 6 hours. It asks a few questions, then rewrites until time runs out, with four independent review agents catching blind spots, breaking AI-detectable patterns, and verifying the final output makes sense to a first-time reader.
