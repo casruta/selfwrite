@@ -149,7 +149,7 @@ Not all human writing patterns are inappropriate. Some make text sound more natu
 
 | Pattern | Register 1 | Register 2 | Register 3+ | Example |
 |---------|-----------|-----------|-------------|---------|
-| Short breathing-room sentences (1-5 words, no analytical content, exist to give the reader a beat) | Forbidden | Allow 1-2 per section | Allow freely | "Crime in BC is falling." before the data paragraph |
+| Short breathing-room sentences (1-5 words, no analytical content, exist to give the reader a beat). **Point-first rule:** breathers go mid-paragraph or end-of-paragraph only, never as the first sentence. The first sentence of every paragraph must state a finding, claim, or thesis. | Forbidden | Allow 1-2 per section, mid-paragraph only | Allow freely, mid-paragraph only | "BC's CSI dropped 46% from 1998 to 2014. It kept falling." (breather after thesis, not before) |
 | Uneven paragraph length (mixing 1-sentence and 5-sentence paragraphs) | Allow | Allow | Allow | A 1-sentence paragraph followed by a 5-sentence paragraph is natural, not an error |
 | Deliberate repetition for clarity ("There's X. There's also Y.") | Forbidden | Allow sparingly | Allow freely | Repeating a sentence structure 2x for parallel emphasis is human, not a template |
 | First person in opinion/recommendation sections | Forbidden | Allow "we" in recommendations only | Allow "I" and "we" | "We recommend reviewing the allocation" in an Implications section |
