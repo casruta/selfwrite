@@ -160,7 +160,7 @@ The dimension most tied to the task's PURPOSE gets the highest weight.
 **Prose / Reports / Analysis:**
 - Specificity: concrete details, numbers, named examples vs. vague generalities
 - Structure: logical flow, clear sections, point-first paragraphs vs. meandering
-- Audience calibration: tone and complexity match the target reader. Every sentence is self-sufficient: a reader encountering it mid-scroll understands the claim without referring to a glossary or earlier section. Technical terms used more than 2 paragraphs after their definition include a brief inline reminder (parenthetical or appositive). For scores above 7, no sentence should stack 3+ unfamiliar concepts without inline clarification
+- Audience calibration: tone and complexity match the target reader. Every sentence is self-sufficient: a reader encountering it mid-scroll understands the claim without referring to a glossary or earlier section. Technical terms used more than 2 paragraphs after their definition include a brief inline reminder (parenthetical or appositive). For scores above 7, no sentence should stack 3+ unfamiliar concepts without inline clarification. Target grade 12 reading level. Every sentence must be parseable on first read. No more than one subordinate clause per sentence. All pronouns and demonstratives ('this,' 'these,' 'such') must have an unambiguous referent within the same sentence or the immediately preceding one
 - Actionability: reader knows what to do next / "so what?" is answered
 - Evidence quality: claims backed by specific data vs. unsupported assertions
 - Register discipline: voice stays within the target register level throughout; no drift toward editorial at inappropriate register levels (see Voice Register Spectrum)
@@ -548,6 +548,7 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 | Symmetric structure | Every paragraph same length, same shape | All paragraphs: topic sentence + 3 supporting + concluding |
 | Over-signposting | Excessive meta-commentary about structure | "As mentioned earlier," "As we will see," "It's worth noting" |
 | Qualitative vagueness | Magnitude words without specifics | "significant increase" (no number), "growing concern" (no evidence) |
+| Vague referents | Sentence opens with "this," "these," "such," or "the pattern" without naming what it refers to | "This suggests..." "Such convergence points to..." |
 
 **Transition Diversity Rules**:
 
@@ -803,6 +804,7 @@ Iterative review agents (Reader, Voice Auditor, Synonym) develop blind spots bec
 - Be blunt. If something is confusing, say so. Do not give the text the benefit of the doubt.
 - Minimum 3 questions, maximum 12. Fewer than 3 means the review was not thorough enough. More than 12 means the text needs another iteration, not a longer review.
 - Every question must cite the specific passage and explain why it is unclear.
+- Flag any pronoun or demonstrative ('this,' 'these,' 'such,' 'the pattern') that lacks an unambiguous referent within the same sentence or the immediately preceding one. A grade 12 reader should never have to scroll back to understand what 'this' refers to.
 - Never suggest rewrites. Only ask questions. The coordinator decides how to fix.
 
 ---
