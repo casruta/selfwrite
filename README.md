@@ -34,35 +34,54 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 
 **3. The loop.** You choose the mode:
 
-- **Simple rewrite** -- THINK → TEST → REFLECT. Prose quality, structure, style
+- **Simple rewrite** -- THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT. Prose quality, structure, style
 - **Deep rewrite** -- adds a RESEARCH phase alongside THINK, surfacing missing context, counterarguments, and evidence gaps. You approve what gets incorporated
 
 ```
-       ┌───────────────────────────────┐
-       │                               │
-       ▼                               │
-  ┌─────────┐                          │
-  │  THINK  │  Read history, analyze,  │
-  │         │  form hypothesis         │
-  └────┬────┘                          │
-       │                               │
-       ▼                               │
-  ┌─────────┐                          │
-  │  TEST   │  Revise, score, measure  │
-  │         │  Keep or revert          │
-  └────┬────┘                          │
-       │                               │
-       ▼                               │
-  ┌─────────┐                          │
-  │ REFLECT │  Log result, check       │
-  │         │  convergence signals     │
-  └────┬────┘                          │
-       │                               │
-       └───────────────────────────────┘
+       ┌──────────────────────────────────────────────────┐
+       │                                                  │
+       ▼                                                  │
+  ┌─────────┐                                             │
+  │  THINK  │  Read history, analyze, form hypothesis     │
+  └────┬────┘                                             │
+       │                                                  │
+       ▼                                                  │
+  ┌─────────┐                                             │
+  │  DRAFT  │  Apply THINK insights, produce candidate    │
+  └────┬────┘                                             │
+       │                                                  │
+       ▼                                                  │
+  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
+  │  READER  │  │  VOICE   │  │ SYNONYM  │  (parallel)   │
+  │  AGENT   │  │ AUDITOR  │  │  AGENT   │               │
+  └────┬─────┘  └────┬─────┘  └────┬─────┘               │
+       │              │             │                     │
+       ▼              ▼             ▼                     │
+  ┌──────────────────────────────────────┐                │
+  │  REVISE  │  Incorporate annotations  │                │
+  └────┬─────────────────────────────────┘                │
+       │                                                  │
+       ▼                                                  │
+  ┌─────────┐                                             │
+  │  SCORE  │  Adversarial Scoring Protocol               │
+  └────┬────┘                                             │
+       │                                                  │
+       ▼                                                  │
+  ┌─────────┐                                             │
+  │ REFLECT │  Log result, check convergence signals      │
+  └────┬────┘                                             │
+       │                                                  │
+       └──────────────────────────────────────────────────┘
 ```
 
 - **THINK** -- identify the weakest dimension, adopt an expert persona (senior editor, beat reporter, research director), ask 2-3 questions that reference specific content in the draft, form a hypothesis
-- **TEST** -- revise, score every dimension, keep only if the composite improved
+- **DRAFT** -- apply THINK insights to produce a candidate revision (targeted changes only, not wholesale rewrite)
+- **REVIEW** -- three independent agents evaluate the draft in parallel:
+  - **Reader Agent** -- reads as the target audience, flags engagement drops, comprehension failures, credibility gaps
+  - **Voice Auditor** -- hunts for AI-tell patterns (sentence template repetition, rhythm monotony, hedge clustering, transition monotony, register violations)
+  - **Synonym Agent** -- suggests less-predictable synonym substitutions to break AI detection's statistical signature while preserving meaning and register
+- **REVISE** -- coordinator incorporates review annotations, triaging by severity (engagement drops first, AI-tell patterns second, synonym substitutions third)
+- **SCORE** -- adversarial scoring protocol with 8 safeguards
 - **REFLECT** -- log the result, check for plateau or over-optimization, adjust strategy
 
 The loop uses the entire time budget. When all dimensions reach 7+ and gains stall, the loop shifts into the **Breakthrough Protocol** -- cycling through red team reading, structural rethinks, and constraint-based revision to push past the ceiling that incremental improvement can't reach.
@@ -83,7 +102,7 @@ The writing skill powering selfwrite is grounded in research, not heuristics:
 
 ## Scoring Safeguards
 
-Seven safeguards: name weaknesses before scoring, compare to previous best, cite specific content for every score, cap gains at +1 per dimension per iteration, anchor baselines at 4-6, score against the audience from intake, and enforce register compliance (editorial anti-patterns are forbidden at formal register levels).
+Eight safeguards: name weaknesses before scoring, compare to previous best, cite specific content for every score, cap gains at +1 per dimension per iteration, anchor baselines at 4-6, score against the audience from intake, enforce register compliance (editorial anti-patterns are forbidden at formal register levels), and external review integration (unaddressed high-severity review agent annotations cap the relevant dimension).
 
 ## Output
 

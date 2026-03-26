@@ -13,7 +13,7 @@ argument-hint: '"task description" <duration>' (e.g., "financial report on Q4 bu
 
 # Selfwrite: Autonomous Self-Improving Loop
 
-You are running a time-boxed self-improvement loop. Each iteration follows a strict three-phase cycle: **THINK → TEST → REFLECT**. You will iterate on a task, score yourself honestly, ask expert-level questions to push quality higher, and distill what you learn into a reusable skill file.
+You are running a time-boxed self-improvement loop. Each iteration follows a multi-agent cycle: **THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT**. You will iterate on a task, score yourself honestly, ask expert-level questions to push quality higher, and distill what you learn into a reusable skill file. Three independent review agents — a **Reader Agent**, a **Voice Auditor**, and a **Synonym Agent** — evaluate every draft from distinct cognitive perspectives before revisions are finalized, catching blind spots that self-evaluation misses and breaking the statistical patterns that make AI-generated text detectable.
 
 **HARD RULE: Use the ENTIRE time budget. Never exit early. The time budget is an investment in depth, not a deadline to beat.**
 
@@ -50,13 +50,18 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - Default: 60% iteration loop / 30% distill / 10% summarize
    - Short budget (<15m): 70% / 20% / 10%
    - Long budget (>60m): 55% / 35% / 10%
-6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations
+
+   **Review agent scaling for short budgets**: On budgets under 15 minutes, the three-agent REVIEW step consumes a larger fraction of each iteration. To ensure the minimum 3 iterations:
+   - **Under 15m**: Run only the Voice Auditor and Synonym Agent (skip Reader Agent — the coordinator's own reading suffices for short pieces). Re-enable Reader Agent if any dimension drops below 5.
+   - **Under 10m**: Run only the Synonym Agent (minimal overhead, still breaks detection patterns). Voice Auditor and Reader Agent are skipped entirely.
+   - **15m and above**: All three agents run every iteration (default behavior).
+6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved\treader_annotations\tvoice_audit_count\tsynonym_applied\tsynonym_rejected`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations
 7. **Rewrite mode decision.** Ask the user:
    > "Do you want me to research and add context as I revise, or focus purely on improving what's already here?"
    > 1. **Deep rewrite** — I'll research context, counterarguments, and missing evidence alongside each revision. You approve what gets added.
    > 2. **Simple rewrite** — I'll focus on prose quality, structure, and style. No new content added.
 
-   - If **simple rewrite** (or artifact is code/config/changelog): skip all RESEARCH steps. The loop runs as THINK → TEST → REFLECT only.
+   - If **simple rewrite** (or artifact is code/config/changelog): skip all RESEARCH steps. The loop runs as THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT (no RESEARCH phase).
    - If **deep rewrite**: activate the RESEARCH phase (see below). It runs alongside THINK every iteration.
 
 8. **Intake questions.** For prose artifacts, ask the user these questions before generating the rubric. Their answers shape the rubric weights and the revision approach. The user can skip any question (defaults apply).
@@ -184,63 +189,91 @@ Save rubric to `rubric.md`.
 4. **ANCHOR BASELINE AT 4-6** — hard rule. A first draft is not excellent. No dimension above 7.
 5. Log scores with evidence to `log.md`, write first row to `results.tsv`
 
-## The Loop: THINK (+ RESEARCH) → TEST → REFLECT
+## The Loop: THINK (+ RESEARCH) → DRAFT → REVIEW → REVISE → SCORE → REFLECT
 
 Run until the iteration phase deadline. Minimum 3 iterations per run.
 
 **Simple rewrite** (no RESEARCH):
 ```
-       ┌───────────────────────────────┐
-       │                               │
-       ▼                               │
-  ┌─────────┐                          │
-  │  THINK  │  Read history, analyze,  │
-  │         │  form hypothesis         │
-  └────┬────┘                          │
-       │                               │
-       ▼                               │
-  ┌─────────┐                          │
-  │  TEST   │  Revise, score, measure  │
-  │         │  Keep or revert          │
-  └────┬────┘                          │
-       │                               │
-       ▼                               │
-  ┌─────────┐                          │
-  │ REFLECT │  Log result, check       │
-  │         │  convergence signals     │
-  └────┬────┘                          │
-       │                               │
-       └───────────────────────────────┘
+       ┌──────────────────────────────────────────────────┐
+       │                                                  │
+       ▼                                                  │
+  ┌─────────┐                                             │
+  │  THINK  │  Read history, analyze, form hypothesis     │
+  └────┬────┘                                             │
+       │                                                  │
+       ▼                                                  │
+  ┌─────────┐                                             │
+  │  DRAFT  │  Apply THINK insights, produce candidate    │
+  └────┬────┘                                             │
+       │                                                  │
+       ▼                                                  │
+  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
+  │  READER  │  │  VOICE   │  │ SYNONYM  │  (parallel)   │
+  │  AGENT   │  │ AUDITOR  │  │  AGENT   │               │
+  └────┬─────┘  └────┬─────┘  └────┬─────┘               │
+       │              │             │                     │
+       ▼              ▼             ▼                     │
+  ┌──────────────────────────────────────┐                │
+  │  REVISE  │  Incorporate annotations  │                │
+  └────┬─────────────────────────────────┘                │
+       │                                                  │
+       ▼                                                  │
+  ┌─────────┐                                             │
+  │  SCORE  │  Adversarial Scoring Protocol               │
+  └────┬────┘                                             │
+       │                                                  │
+       ▼                                                  │
+  ┌─────────┐                                             │
+  │ REFLECT │  Log result, check convergence signals      │
+  └────┬────┘                                             │
+       │                                                  │
+       └──────────────────────────────────────────────────┘
 ```
 
 **Deep rewrite** (with RESEARCH):
 ```
-       ┌────────────────────────────────────────┐
-       │                                        │
-       ▼                                        │
-  ┌──────────┐    ┌──────────┐                  │
-  │  THINK   │    │ RESEARCH │  (parallel)      │
-  │ (style)  │    │(substance)│                 │
-  └────┬─────┘    └────┬─────┘                  │
-       │               │                        │
-       ▼               ▼                        │
-  ┌──────────────────────────┐                  │
-  │  SURFACE findings to user │                 │
-  │  User approves/rejects    │                 │
-  └────────────┬─────────────┘                  │
-               │                                │
-               ▼                                │
-          ┌─────────┐                           │
-          │  TEST   │  Revise (style +          │
-          │         │  approved research)       │
-          └────┬────┘                           │
-               │                                │
-               ▼                                │
-          ┌─────────┐                           │
-          │ REFLECT │  Log, check convergence   │
-          └────┬────┘                           │
-               │                                │
-               └────────────────────────────────┘
+       ┌──────────────────────────────────────────────────┐
+       │                                                  │
+       ▼                                                  │
+  ┌──────────┐    ┌──────────┐                            │
+  │  THINK   │    │ RESEARCH │  (parallel)                │
+  │ (style)  │    │(substance)│                           │
+  └────┬─────┘    └────┬─────┘                            │
+       │               │                                  │
+       ▼               ▼                                  │
+  ┌──────────────────────────┐                            │
+  │  SURFACE findings to user │                           │
+  │  User approves/rejects    │                           │
+  └────────────┬─────────────┘                            │
+               │                                          │
+               ▼                                          │
+          ┌─────────┐                                     │
+          │  DRAFT  │  Revise (style + approved research) │
+          └────┬────┘                                     │
+               │                                          │
+               ▼                                          │
+  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
+  │  READER  │  │  VOICE   │  │ SYNONYM  │  (parallel)   │
+  │  AGENT   │  │ AUDITOR  │  │  AGENT   │               │
+  └────┬─────┘  └────┬─────┘  └────┬─────┘               │
+       │              │             │                     │
+       ▼              ▼             ▼                     │
+  ┌──────────────────────────────────────┐                │
+  │  REVISE  │  Incorporate annotations  │                │
+  └────┬─────────────────────────────────┘                │
+               │                                          │
+               ▼                                          │
+          ┌─────────┐                                     │
+          │  SCORE  │  Adversarial Scoring Protocol       │
+          └────┬────┘                                     │
+               │                                          │
+               ▼                                          │
+          ┌─────────┐                                     │
+          │ REFLECT │  Log, check convergence             │
+          └────┬────┘                                     │
+               │                                          │
+               └──────────────────────────────────────────┘
 ```
 
 ---
@@ -292,7 +325,7 @@ The hypothesis must name: the change, the target dimension, the expected score d
 - Identify the strongest counterargument to the piece's central claim
 - Save gathered sources to `research/` directory
 
-**3. Surface to User** — Present max 3 findings before TEST:
+**3. Surface to User** — Present max 3 findings before DRAFT:
 > **Research findings (iteration N):**
 > 1. [Factual] The piece claims X, but Y source says Z. Include?
 > 2. [Adversarial] Strongest counterargument: ... Address it?
@@ -300,7 +333,7 @@ The hypothesis must name: the change, the target dimension, the expected score d
 >
 > **Which findings should I incorporate? (numbers, "all", or "none")**
 
-**4. Incorporate** — Approved findings feed into the TEST revision alongside THINK's stylistic hypothesis. Rejected findings are logged but not added.
+**4. Incorporate** — Approved findings feed into the DRAFT revision alongside THINK's stylistic hypothesis. Rejected findings are logged but not added.
 
 **RESEARCH rules:**
 - Never add content without user approval. Zero autonomous additions.
@@ -311,17 +344,61 @@ The hypothesis must name: the change, the target dimension, the expected score d
 
 ---
 
-### TEST
+### DRAFT
 
-Execute the hypothesis. Revise the artifact. Measure the result.
+Apply THINK insights to produce a candidate revision. In deep-rewrite mode, also incorporate user-approved RESEARCH findings. Save the draft to `versions/v{N}-draft.md`.
 
-**1. Revise**
-Apply the insights from THINK to produce a new version. In deep-rewrite mode, also incorporate user-approved RESEARCH findings. Address the specific weaknesses identified — do not rewrite everything. Save to `versions/v{N}.md`.
+**Drafting rules:**
+- **Targeted changes only**: Address the specific weaknesses identified by THINK. Do not rewrite everything — surgical revision beats wholesale replacement. Change as little as possible to test the hypothesis cleanly.
+- **Scope**: Limit changes to the paragraphs and sentences named in the hypothesis and expert questions. If THINK identified paragraph 3's transition as weak, fix paragraph 3's transition — don't also reorganize paragraphs 5-7.
+- **Preserve what works**: Sections that scored well in prior iterations should not be modified unless the hypothesis specifically targets them.
+- **One hypothesis per draft**: Test one change at a time. If multiple changes are needed, pick the one with the highest expected impact and save the rest for the next iteration.
 
-**2. Score**
-Follow the full **Adversarial Scoring Protocol** (below).
+The draft is a candidate, not the final version. It will be reviewed by three independent agents before finalization.
 
-**3. Decide: Keep or Revert**
+---
+
+### REVIEW
+
+Launch three review agents **in parallel** against the draft. Each agent is a fresh subagent with no context carryover from previous iterations — this prevents them from developing the same blind spots as the main loop.
+
+Each agent receives: the draft text, the rubric, the target audience profile (from intake), the current scores, and the specific dimension being targeted this iteration.
+
+Each agent returns structured annotations (location + issue + severity). See the **Review Agents** section below for full specifications.
+
+| Agent | Focus | Runs in parallel? |
+|-------|-------|--------------------|
+| **Reader Agent** | Engagement, comprehension, credibility, pacing — reads as the target audience | Yes |
+| **Voice Auditor** | AI-tell patterns, sentence template repetition, rhythm monotony, register violations, transition diversity | Yes |
+| **Synonym Agent** | Suggests 2nd/3rd-most-probable synonym substitutions to break AI detection statistical signatures | Yes |
+
+---
+
+### REVISE
+
+Incorporate review annotations into a final version. The coordinator (not the agents) makes all decisions about which annotations to apply.
+
+**Triage order:**
+1. **Engagement drops** (Reader Agent) — highest priority, these are where readers stop reading
+2. **AI-tell patterns** (Voice Auditor) — second priority, these make the text detectable
+3. **Synonym substitutions** (Synonym Agent) — apply selectively, only where the substitution reads naturally
+4. **Transition diversity** (Voice Auditor) — vary paragraph connectors
+5. **Pacing and comprehension** (Reader Agent) — lower priority but still address
+6. **Rhythm fixes** (Voice Auditor) — break monotonous sentence length sequences
+
+**Rules:**
+- If an annotation conflicts with the iteration's target dimension, prioritize the target dimension but log the conflict
+- If an annotation can't be addressed without damaging another dimension, defer it to a future iteration
+- Apply synonym substitutions only where the replacement preserves meaning and register — reject any that sound forced
+- Save the final revised version to `versions/v{N}.md`
+
+---
+
+### SCORE
+
+Follow the full **Adversarial Scoring Protocol** (below). Score `v{N}.md` (the revised version, not the draft).
+
+**Decide: Keep or Revert**
 
 | Outcome | Action |
 |---------|--------|
@@ -343,10 +420,13 @@ Log the result. Check convergence signals. Decide what to do next.
 - Questions asked and answers (summarized)
 - Per-dimension scores before and after
 - KEEP/REVERT decision with reasoning
+- Reader Agent annotations (summarized): count, top issues flagged
+- Voice Auditor annotations (summarized): patterns detected, rhythm analysis
+- Synonym Agent substitutions: count applied, count rejected, examples of each
 - (Deep rewrite only) RESEARCH findings surfaced, user's approval/rejection, and how approved findings were incorporated
 
 **2. Log to `results.tsv`** (structured):
-Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}`
+Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}\t{reader_annotations}\t{voice_audit_count}\t{synonym_applied}\t{synonym_rejected}`
 
 **3. Check Convergence Signals**
 
@@ -359,6 +439,9 @@ Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}
 | 5 | **Hypothesis contradicts prior results** | Mental model incorrect | Re-read the full artifact fresh; rethink fundamentally |
 | 6 | **All dimensions at 7+ AND <0.3 gain over 2 keeps** | Ceiling reached | Enter **Breakthrough Protocol** (see below) |
 | 7 | **Breakthrough iteration produced no gain** | Structural ceiling confirmed | Cycle to next breakthrough technique; if all 3 exhausted, accept plateau |
+| 8 | **Voice Auditor flags same pattern 3+ iterations after first detection** | Drafter can't eliminate this AI-tell | Try Constraint-Based Revision targeting that specific pattern; if still persistent, accept it |
+| 9 | **Voice Auditor annotation count not decreasing over 4+ iterations** | Drafter isn't learning to avoid AI patterns | Switch to aggressive synonym substitution and structural rethink focused on breaking sentence templates |
+| 10 | **Reader Agent finds 0 engagement drops for 2 consecutive iterations** | Reader perspective exhausted | Skip Reader Agent for next iteration to save time; re-enable if score drops |
 
 These are advisory signals, not rigid rules. Use judgment. Log which signal triggered and the response chosen.
 
@@ -367,9 +450,203 @@ Run `date +%s`. If remaining time < 1.5x average iteration time, exit the loop a
 
 ---
 
+## Review Agents
+
+Three independent agents review every draft during the REVIEW step. Each runs as a fresh subagent (no context carryover between iterations) to provide genuine cognitive separation from the main loop. All three launch **in parallel**.
+
+### Reader Agent
+
+**Purpose**: Read the draft as the target audience. Flag where a real reader would stop reading, get confused, lose interest, or push back. This catches failures that self-evaluation misses — the same way a writer can't proofread their own work because they read what they meant, not what they wrote.
+
+**Input** (provided in agent prompt):
+- The full draft text
+- Target audience description (from intake)
+- Voice register level (1-5)
+- Current rubric with scores
+- The specific dimension being targeted this iteration
+
+**Output format** (structured annotations):
+```
+## Reader Review
+
+### Engagement Drops
+- [Para N, sentence M]: Reader loses thread because [specific reason]
+- [Para N]: Attention drops here — [why]
+
+### Comprehension Failures
+- [Para N]: Assumes knowledge of [X] that target audience lacks
+- [Para N, sentence M]: Ambiguous referent — "it" could mean [A] or [B]
+
+### Credibility Gaps
+- [Para N]: Claim [X] unsupported — reader would ask "says who?"
+- [Para N]: Hedge weakens what should be a confident assertion
+
+### Pacing Issues
+- [Section X]: Drags — information density too low for 3 paragraphs
+- [Para N-M]: Three consecutive paragraphs start with same structure
+```
+
+**Behavioral rules**:
+- Read linearly, as a human would — don't skip around
+- Flag the FIRST point where you'd stop reading (highest priority annotation)
+- Maximum 8 annotations per review (force prioritization)
+- Each annotation must cite specific text, not vague complaints
+- Never suggest rewrites — only identify problems (the coordinator rewrites during REVISE)
+
+---
+
+### Voice Auditor
+
+**Purpose**: Hunt for patterns that make text identifiable as AI-generated. This is adversarial detection, not quality scoring. Also enforces transition diversity between paragraphs.
+
+**Input** (provided in agent prompt):
+- The full draft text
+- Voice register level (1-5)
+- The editorial anti-patterns list (from Voice Register Spectrum)
+
+**Output format** (structured annotations):
+```
+## Voice Audit
+
+### AI-Tell Patterns Detected
+- [Location]: Pattern: [name]. Evidence: "[quoted text]"
+
+### Sentence Template Repetition
+- Template "[structure]" appears N times: [locations]
+
+### Rhythm Analysis
+- Sentence length sequence: [N, N, N, N, N...] — monotonous at [section]
+- Recommended: break with [short/long] sentence at [location]
+
+### Transition Diversity
+- Transition "[word/phrase]" used N times: [locations]
+- Consecutive paragraphs [N-M] all use [same transition type]
+- Suggested variety: [alternatives appropriate for register level]
+
+### Register Violations
+- [Location]: Anti-pattern "[name]" violates register level [N]
+
+### Hedge Clustering
+- [Para N]: N hedges in M sentences: "[list]"
+```
+
+**AI-Tell Pattern Catalog** (check for all of these every audit):
+
+| Pattern | Description | Example |
+|---------|-------------|---------|
+| Kill-list words | Words on the banned list | "robust," "comprehensive," "notable," "demonstrates," "significant" (without p-value) |
+| Em-dash overuse | More than 1 em-dash per 500 words | "The policy — which was controversial — failed" |
+| Hedge clustering | 3+ hedges within 2 sentences | "somewhat arguably perhaps" |
+| Sentence template repetition | Same syntactic structure 3+ times in 5 paragraphs | "[Topic] is [adjective]. [Topic] is [adjective]." |
+| Rhythm monotony | 5+ consecutive sentences within 20% of same word count | All sentences 15-18 words |
+| Transition word repetition | Same transition used 3+ times in the piece | "However," "Moreover," "Furthermore" |
+| List-then-elaborate | Announce N items, then walk through each identically | "There are three factors. First... Second... Third..." |
+| Symmetric structure | Every paragraph same length, same shape | All paragraphs: topic sentence + 3 supporting + concluding |
+| Over-signposting | Excessive meta-commentary about structure | "As mentioned earlier," "As we will see," "It's worth noting" |
+| Qualitative vagueness | Magnitude words without specifics | "significant increase" (no number), "growing concern" (no evidence) |
+
+**Transition Diversity Rules**:
+
+The auditor checks that paragraph-to-paragraph transitions use varied connective strategies. Monotonous transitions are an AI-tell — humans naturally vary how they bridge paragraphs.
+
+| Register | Acceptable transition strategies | Forbidden |
+|----------|--------------------------------|-----------|
+| 1-2 (Institutional/Formal) | Logical connectives ("consequently," "by contrast"), referential bridges (repeat key noun from prior paragraph), temporal markers ("in Q3," "subsequently"), data-driven pivots ("this 12% gap...") | Colloquial bridges, rhetorical questions as transitions |
+| 3 (Authoritative journalism) | All of the above plus: thematic pivots, contrastive pairs, cause-effect chains | Excessive "However/Moreover/Furthermore" cycling |
+| 4-5 (Accessible/Conversational) | All of the above plus: direct address pivots, question-as-bridge, narrative continuity ("But that's only half the story") | N/A — all strategies available |
+
+**Minimum transition variety**: No single transition word or strategy should appear more than twice in a piece. Flag violations.
+
+**Behavioral rules**:
+- Minimum 3, maximum 10 annotations per audit
+- Each annotation must quote the specific offending text
+- False positives are costly — only flag patterns you're confident about
+- Rhythm analysis is mandatory every audit (compute sentence length sequence)
+- Transition diversity check is mandatory every audit
+- Never suggest rewrites — only identify patterns (the coordinator rewrites during REVISE)
+
+---
+
+### Synonym Agent
+
+**Purpose**: Suggest word substitutions that break the statistical signature of AI-generated text. AI detection tools work partly by measuring how consistently text uses the most predictable word choices. When every word is the "obvious" choice, the text reads as machine-generated. By substituting with less predictable but equally valid synonyms, the text's statistical profile shifts toward human-written patterns (humans naturally use more varied, less predictable vocabulary).
+
+**Input** (provided in agent prompt):
+- The full draft text
+- Voice register level (1-5)
+- The current iteration number
+
+**Output format** (structured substitution list):
+```
+## Synonym Substitutions
+
+### Proposed Replacements
+- [Para N, sentence M]: "[original word]" → "[suggested synonym]"
+  Why less predictable: [brief explanation — e.g., "most writers default to 'significant' here; 'sharp' is equally accurate but less expected"]
+  Register-appropriate: yes/no.
+
+### Words Considered but Rejected
+- [Para N]: "[word]" — no suitable less-predictable synonym exists without changing meaning
+
+### Substitution Density
+- Total proposed: N substitutions across M paragraphs
+- Target density: 1-3 substitutions per paragraph
+```
+
+**How it works**:
+
+1. **Scan each paragraph** for words where the chosen word feels like the "default" or most obvious choice — the word any AI or average writer would reach for first
+2. **For each candidate word**, identify a less predictable synonym that:
+   - Preserves the exact meaning in context
+   - Matches the target register level (don't suggest casual synonyms for institutional prose)
+   - Reads naturally in the sentence — if a human editor would flag the substitution as awkward, reject it
+   - Is not itself an AI-tell word (don't replace one banned word with another)
+   - A human expert in the domain might plausibly choose over the default
+3. **Prioritize substitutions on**:
+   - Common AI-default words (the words LLMs most predictably choose: "significant," "crucial," "utilize," "implement," "demonstrate," "facilitate")
+   - Adjectives and adverbs (highest substitution flexibility)
+   - Verbs (second priority — verb choice strongly affects detection)
+   - Nouns (lowest priority — noun substitution risks changing meaning)
+4. **Target density**: 1-3 substitutions per paragraph. More than 3 risks distorting the voice. **Maximum 15 substitutions total per review** (caps the triage burden on the coordinator).
+
+**Register-matched synonym selection**:
+
+| Register | Synonym direction | Example |
+|----------|-------------------|---------|
+| 1-2 (Institutional) | Prefer precise, domain-specific alternatives. Avoid generic formal words that AI overuses ("utilize," "facilitate," "implement") | "increased" → "rose," "important" → "material," "shows" → "reflects" |
+| 3 (Authoritative) | Prefer specific over generic. Choose words a beat reporter would use over words a press release would use | "significant" → "sharp," "problem" → "bottleneck," "change" → "pivot" |
+| 4-5 (Conversational) | Prefer concrete, tactile, everyday words. Avoid anything that sounds like a corporate memo | "utilize" → "use," "facilitate" → "help," "implement" → "build," "demonstrates" → "shows" |
+
+**Behavioral rules**:
+- Never substitute proper nouns, technical terms, or quoted material
+- Never substitute words that are already unusual or distinctive — these are humanizing
+- Each substitution must include the probability rank reasoning
+- If the draft already uses diverse vocabulary, propose fewer substitutions (the text doesn't need help)
+- The coordinator makes the final accept/reject decision during REVISE — the Synonym Agent only proposes
+
+---
+
+### Review Integration Rules
+
+**Annotation decay**:
+- Reader Agent annotations should decrease over iterations as the artifact improves. If they don't decrease after 4 iterations, flag as convergence signal #10.
+- Voice Auditor annotations should decrease over iterations. If they don't, flag as convergence signal #9.
+- If the Voice Auditor returns 0 AI-tell findings for 2 consecutive iterations, skip it for the next iteration to save time. Re-enable if any dimension score drops.
+- If the Reader Agent finds 0 engagement drops for 2 consecutive iterations, skip it for the next iteration. Re-enable if score drops.
+- The Synonym Agent always runs (its purpose is statistical, not quality-based — even good text benefits from probability-shifting).
+
+**Cross-agent conflicts**:
+- If Reader Agent flags a passage as confusing AND Synonym Agent proposes a substitution in the same passage: apply the Reader fix first, then re-evaluate whether the synonym still fits.
+- If Voice Auditor flags a transition AND Reader Agent flags the same passage for pacing: address both — these are complementary, not conflicting.
+- If Synonym Agent proposes a substitution that the Voice Auditor would flag as an AI-tell word: reject the substitution.
+
+---
+
 ## Breakthrough Protocol
 
 When Signal #6 fires (all dimensions at 7+ and gains have stalled below 0.3 for 2 consecutive keeps), the loop shifts from incremental improvement to structural experimentation. The protocol cycles through three techniques. Each feeds into the next.
+
+**Review agents during Breakthrough**: All three review agents (Reader, Voice Auditor, Synonym) still run during breakthrough iterations. The Red Team Reader technique replaces the Reader Agent for that iteration only (they serve the same function but the Red Team version is more adversarial). Voice Auditor and Synonym Agent run as normal.
 
 ### Cycling Logic
 
@@ -392,7 +669,7 @@ Adopt the persona of a skeptical member of the target audience (from intake). An
 3. **What question does this leave unanswered?** The gap the piece doesn't address that the audience would notice
 4. **What one sentence would I share with a colleague?** The "so what" test -- if nothing is shareable, the piece lacks a clear payoff
 
-Red Team findings feed into the next THINK phase as **constraints**, not suggestions. The revision MUST address the drop-off point and the weakest claim. Log findings to `log.md` with tag `[RED TEAM]`.
+Red Team findings feed into the next THINK phase as **constraints**, not suggestions. The revision MUST address the drop-off point and the weakest claim. During this technique, the Red Team Reader **replaces** the Reader Agent in the REVIEW step (skip the standard Reader Agent to avoid redundant reader-perspective analysis). Voice Auditor and Synonym Agent still run in parallel with the Red Team Reader. Log findings to `log.md` with tag `[RED TEAM]`.
 
 ---
 
@@ -404,7 +681,7 @@ Re-read the entire artifact as if seeing it for the first time. Discard iteratio
 2. **Narrative arc**: restructure around a tension-resolution or before-after frame. Tests whether the piece lacks forward momentum
 3. **Compression**: what if this were half the length? What survives the cut? Tests whether the piece is padded
 
-Pick the most promising alternative and execute it as a single revision. **The Maximum Increment Rule is relaxed to +2 per dimension** for structural rethink iterations, because the artifact is fundamentally reorganized. Log with tag `[STRUCTURAL]`, including all 3 alternatives considered and the rationale for the choice.
+Pick the most promising alternative and execute it as a single DRAFT. Run the full REVIEW step (all three agents) on the structural rethink draft. **The Maximum Increment Rule is relaxed to +2 per dimension** for structural rethink iterations, because the artifact is fundamentally reorganized. However, unaddressed high-severity review annotations still cap dimensions per safeguard #8. Log with tag `[STRUCTURAL]`, including all 3 alternatives considered and the rationale for the choice.
 
 ---
 
@@ -419,14 +696,14 @@ Apply one constraint from this menu. Rotate through them across iterations:
 | **Remove all hedging** | Delete every hedge word (may, might, could, somewhat, relatively, arguably). Then add back ONLY the hedges that are genuinely necessary. Most aren't |
 | **Kill your best paragraph** | Identify the paragraph you're most proud of. Delete it. Rebuild the piece around its absence. If the piece is better without it, it was a crutch |
 
-Score after applying the constraint. If composite improved: keep. If not: revert, try the next constraint. Log with tag `[CONSTRAINT]`, including which constraint was applied and what was cut or changed.
+Run the full REVIEW step (all three agents) after applying the constraint, then REVISE and SCORE. If composite improved: keep. If not: revert, try the next constraint. Log with tag `[CONSTRAINT]`, including which constraint was applied and what was cut or changed.
 
 ---
 
 ### Breakthrough Logging
 
 Breakthrough iterations use the same `results.tsv` format but with a `mode` column:
-- `regular` for standard THINK → TEST → REFLECT iterations
+- `regular` for standard THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT iterations
 - `red_team` for Red Team Reader iterations
 - `structural` for Structural Rethink iterations
 - `constraint` for Constraint-Based Revision iterations
@@ -469,6 +746,13 @@ Score against the audience identified in intake, not against abstract quality. A
 ### 7. Register Compliance Check
 After scoring all dimensions, scan the artifact for editorial anti-patterns that violate the target register level. If the register is ≤ 2 and any anti-patterns from the Editorial Anti-Patterns table are present, Audience Calibration cannot score above 6 regardless of other qualities. Log each violation found with the specific anti-pattern name and the offending text.
 
+### 8. External Review Integration
+After Reader Agent and Voice Auditor annotations are incorporated during REVISE, the scoring step must acknowledge which annotations were addressed and which were deferred. Scoring rules:
+- **Unaddressed high-severity Reader annotations** (engagement drops, comprehension failures): the relevant dimension cannot increase this iteration. No improvement credit for known reader problems that remain.
+- **Unaddressed AI-tell patterns** (Voice Auditor): if 3+ AI-tell patterns from the current audit remain unaddressed, Register Discipline cannot score above its current value.
+- **Synonym substitution rate**: log how many substitutions were applied vs. proposed. If fewer than 50% of proposed substitutions were applied, note the reasoning (acceptable — the coordinator may have good reasons to reject).
+- **Transition diversity**: if the Voice Auditor flagged transition monotony and it remains unaddressed, Structure cannot increase this iteration.
+
 ### Composite Score
 ```
 composite = sum(weight_i * score_i) for all dimensions
@@ -496,6 +780,11 @@ Identify which question patterns produced the biggest score deltas.
 - At what score threshold did research findings stop being useful?
 - What sources or data types were most valuable?
 
+**Review agent patterns** (always extract):
+- **Reader Agent**: Which engagement drops recurred across iterations? What audience assumptions kept failing? Which paragraph positions were most prone to attention loss?
+- **Voice Auditor**: Which AI-tell patterns were hardest to eliminate? Which techniques successfully removed them? What transition strategies worked best for the target register? Did rhythm monotony persist despite targeted fixes?
+- **Synonym Agent**: What was the average acceptance rate for proposed substitutions? Which word categories (adjectives, verbs, adverbs) had the highest acceptance rate? Were there register-specific patterns in which synonyms worked?
+
 ### Step 3: Generate the Skill File
 Write to `runs/<id>/skill.md`:
 
@@ -514,6 +803,17 @@ Write to `runs/<id>/skill.md`:
 
 ## Anti-Patterns
 [What to avoid, derived from reverted iterations]
+
+## Humanization Techniques
+[Patterns that successfully reduced AI detectability, organized by category:]
+### Synonym Substitution Patterns
+[Which word replacements worked best? Register-specific preferences?]
+### Transition Diversity
+[Which transition strategies produced the most natural paragraph flow?]
+### Rhythm Breaking
+[Which sentence length variations were most effective?]
+### AI-Tell Elimination
+[Which AI-tell patterns were hardest to remove? What finally worked?]
 
 ## Convergence Notes
 [Which convergence signals fired? What triggered pivots? What worked after pivoting?]
