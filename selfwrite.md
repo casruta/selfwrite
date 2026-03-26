@@ -82,8 +82,11 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    | Purpose = inform | Lead with finding, complete coverage, neutral tone |
    | Genre = opinion | Commit to a position, crisp evidence, kicker with conviction |
    | Genre = explainer | Layered explanation (analogy → mechanism), accessible vocabulary |
-   | Tone = conversational | More contractions, shorter sentences, colloquialisms OK |
-   | Tone = formal | Fewer contractions, complex nominals, measured cadence |
+   | Tone = conversational | More contractions, shorter sentences, colloquialisms OK. Register level 4-5 |
+   | Tone = formal | Fewer contractions, complex nominals, measured cadence. Register level 2 |
+   | Tone = institutional | Register level 1. Third-person throughout. Zero rhetorical questions. Zero direct address. Passive acceptable. "The index declined 46%" not "Crime is falling." See Voice Register Spectrum |
+   | Genre = data analysis | Lead with finding, not narrative. Data speaks first. Charts introduced by what they show, not by dramatic framing. No hooks or kickers |
+   | Genre = news report | Inverted pyramid: most important finding first. Attribution to sources. Third-person. No editorial commentary |
 
    **Follow-up questions** (ask based on initial answers):
    - If audience = experts: "What's the one thing they don't already know?" (This is your lede)
@@ -98,7 +101,44 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - "What reaction do you want from the reader at the end? Trust? Alarm? Clarity? Action?"
    - "If you could keep only one paragraph, which one?" (This reveals the core)
 
-   If the user skips all questions, default to: general audience, informative purpose, explainer genre, conversational-but-authoritative tone.
+   If the user skips all questions, default to: general audience, informative purpose, explainer genre, authoritative tone (register level 3).
+
+## Voice Register Spectrum
+
+When the user specifies a tone, map it to a register level. The register constrains every revision -- it is not a suggestion but a hard boundary. Every iteration must comply.
+
+| Level | Label | Characteristics | Examples |
+|-------|-------|----------------|----------|
+| 1 | Institutional | Third-person only. No rhetorical questions. No direct address. Passive acceptable. Data states itself. Hedged where uncertain. No narrative devices. | StatsCan reports, WHO briefs, central bank statements |
+| 2 | Formal analytical | Third-person. Controlled analytical observations allowed ("This suggests..."). No rhetorical questions. No scene-setting. Minimal narrative. | The Economist data briefs, OECD policy notes |
+| 3 | Authoritative journalism | Third-person dominant. Occasional "we" for shared context. Findings-first but analytical voice shapes framing. Short punches allowed sparingly. | NYT news analysis, Reuters long-form |
+| 4 | Accessible journalism | First/second person allowed. Rhetorical questions allowed sparingly. Scene-setting hooks. Narrative arc. Short punches for emphasis. | NYT Upshot, FiveThirtyEight, Vox explainers |
+| 5 | Conversational/op-ed | Direct address. Rhetorical questions freely. Strong editorial voice. Punchy one-liners. Dramatic pacing. Opinion-adjacent framing. | Opinion columns, blog posts, newsletters |
+
+**Default: Level 3** (Authoritative journalism). Override via intake tone answer.
+
+**Mapping from intake:**
+- Tone = formal / institutional → Level 1-2
+- Tone = authoritative → Level 3
+- Tone = conversational → Level 4
+- Tone = casual / editorial → Level 5
+- If user names a publication or institution: match that source's register level
+
+### Editorial Anti-Patterns (enforce when register ≤ 2)
+
+These techniques are appropriate at register 4-5 but **forbidden** at register 1-2 and **restricted** at register 3. The scoring protocol deducts points when they appear at the wrong register level.
+
+| Anti-pattern | Example | Why it's editorial | Fix |
+|-------------|---------|-------------------|-----|
+| Rhetorical questions | "So why does nearly half the province believe the opposite?" | Implies the author knows the answer and is building suspense | State the finding directly: "Five data-traceable factors explain the divergence." |
+| Direct address | "Ask British Columbians..." | Creates intimacy between author and reader; inappropriate for institutional voice | "Survey data indicates that 42% of BC residents..." |
+| Scene-setting hooks | "In Chilliwack, a city of 100,000..." | Narrative device that prioritizes engagement over information density | "Chilliwack's per-capita crime rate (11,352/100k) is 2.1x Vancouver's." |
+| Punchy one-liners for emphasis | "That's not a rounding error. It's a structural divide." | Editorial judgment disguised as observation | "The 2.1x differential reflects structural factors including..." |
+| Opinion-adjacent framing | "This isn't a capacity gap. It's a design limitation." | Presents interpretation as settled fact | "This pattern is consistent with structural constraints rather than capacity limitations." |
+| Dramatic pacing | "Now the pieces come together." | Narrative device; presumes the reader is following a story arc | Omit. Let the analysis section speak for itself. |
+| Kicker closings | "It is whether the institutions can earn the credibility to be believed." | Rhetorical flourish that belongs in an opinion piece | State the conclusion plainly: "Addressing these five factors would narrow the gap between reported crime trends and public perception." |
+
+---
 
 ## Rubric Generation
 
@@ -118,6 +158,7 @@ The dimension most tied to the task's PURPOSE gets the highest weight.
 - Audience calibration: tone and complexity match the target reader
 - Actionability: reader knows what to do next / "so what?" is answered
 - Evidence quality: claims backed by specific data vs. unsupported assertions
+- Register discipline: voice stays within the target register level throughout; no drift toward editorial at inappropriate register levels (see Voice Register Spectrum)
 
 **Code:**
 - Correctness: handles stated inputs and produces correct outputs
@@ -424,6 +465,9 @@ The baseline (v0) scores in the 4-6 range. This is calibration, not false modest
 
 ### 6. Audience-Anchored Assessment
 Score against the audience identified in intake, not against abstract quality. A piece written for general public readers should be scored on whether a general reader would follow it, not whether it's technically rigorous. A piece for experts should be scored on analytical depth, not accessibility. Reference the audience profile targets (sentence length, jargon level, evidence type) from the writing skill when scoring.
+
+### 7. Register Compliance Check
+After scoring all dimensions, scan the artifact for editorial anti-patterns that violate the target register level. If the register is ≤ 2 and any anti-patterns from the Editorial Anti-Patterns table are present, Audience Calibration cannot score above 6 regardless of other qualities. Log each violation found with the specific anti-pattern name and the offending text.
 
 ### Composite Score
 ```

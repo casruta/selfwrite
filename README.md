@@ -83,7 +83,7 @@ The writing skill powering selfwrite is grounded in research, not heuristics:
 
 ## Scoring Safeguards
 
-Six safeguards: name weaknesses before scoring, compare to previous best, cite specific content for every score, cap gains at +1 per dimension per iteration, anchor baselines at 4-6, and score against the audience from intake.
+Seven safeguards: name weaknesses before scoring, compare to previous best, cite specific content for every score, cap gains at +1 per dimension per iteration, anchor baselines at 4-6, score against the audience from intake, and enforce register compliance (editorial anti-patterns are forbidden at formal register levels).
 
 ## Output
 
