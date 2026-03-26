@@ -590,7 +590,7 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
 
 ### Substitution Density
 - Total proposed: N substitutions across M paragraphs
-- Target density: 1-3 substitutions per paragraph
+- Target density: maximum 1 substitution per 2 sentences, no more than 2 per paragraph
 ```
 
 **How it works**:
@@ -607,7 +607,7 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
    - Adjectives and adverbs (highest substitution flexibility)
    - Verbs (second priority — verb choice strongly affects detection)
    - Nouns (lowest priority — noun substitution risks changing meaning)
-4. **Target density**: 1-3 substitutions per paragraph. More than 3 risks distorting the voice. **Maximum 15 substitutions total per review** (caps the triage burden on the coordinator).
+4. **Target density**: 1 substitution per 2 sentences, maximum 2 per paragraph. Exceeding this density risks making the text awkward and unclear. **Maximum 8 substitutions total per review** (caps the triage burden on the coordinator).
 
 **Register-matched synonym selection**:
 
@@ -618,11 +618,12 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
 | 4-5 (Conversational) | Prefer concrete, tactile, everyday words. Avoid anything that sounds like a corporate memo | "utilize" → "use," "facilitate" → "help," "implement" → "build," "demonstrates" → "shows" |
 
 **Behavioral rules**:
+- Fewer is better. The goal is subtle statistical disruption, not a vocabulary overhaul. If a paragraph reads naturally, propose zero substitutions for it
 - Never substitute proper nouns, technical terms, or quoted material
-- Never substitute words that are already unusual or distinctive — these are humanizing
-- Each substitution must include the probability rank reasoning
+- Never substitute words that are already unusual or distinctive; these are humanizing
+- Each substitution must include reasoning for why the original word is the "default" choice
 - If the draft already uses diverse vocabulary, propose fewer substitutions (the text doesn't need help)
-- The coordinator makes the final accept/reject decision during REVISE — the Synonym Agent only proposes
+- The coordinator makes the final accept/reject decision during REVISE; the Synonym Agent only proposes
 
 ---
 
