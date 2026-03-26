@@ -535,7 +535,7 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 | Pattern | Description | Example |
 |---------|-------------|---------|
 | Kill-list words | Words on the banned list | "robust," "comprehensive," "notable," "demonstrates," "significant" (without p-value) |
-| Em-dash overuse | More than 1 em-dash per 500 words | "The policy — which was controversial — failed" |
+| Em-dash usage | Any em-dash character (— or --) anywhere in the text. Zero tolerance. Replace with colons, semicolons, parentheses, commas, or sentence breaks | "The policy — which was controversial — failed" → "The policy (which was controversial) failed" |
 | Hedge clustering | 3+ hedges within 2 sentences | "somewhat arguably perhaps" |
 | Sentence template repetition | Same syntactic structure 3+ times in 5 paragraphs | "[Topic] is [adjective]. [Topic] is [adjective]." |
 | Rhythm monotony | 5+ consecutive sentences within 20% of same word count | All sentences 15-18 words |
