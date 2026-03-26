@@ -8,6 +8,8 @@ A Claude Code skill that polishes up the writing making it indistunguishable fro
 
 The skill is supposed to supplement dense, data-heavy text whilst utilizing point-first paragraph structure to optimize for maximum context and explanatory value while inserting minor fluff here and there to bamboozle the AI text detectors. 
 
+#### note: AI-text detectors are evolving daily. At times, entire paragraphs get flagged as AI-generated due to a phrase thats currently over-used by various text models. Finding 2-3 fitting synonyms is generally enough to confuse the AI-detection tool. 
+
 
 ## How to install it 
 
