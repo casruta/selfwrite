@@ -160,7 +160,7 @@ The dimension most tied to the task's PURPOSE gets the highest weight.
 **Prose / Reports / Analysis:**
 - Specificity: concrete details, numbers, named examples vs. vague generalities
 - Structure: logical flow, clear sections, point-first paragraphs vs. meandering
-- Audience calibration: tone and complexity match the target reader
+- Audience calibration: tone and complexity match the target reader. Every sentence is self-sufficient: a reader encountering it mid-scroll understands the claim without referring to a glossary or earlier section. Technical terms used more than 2 paragraphs after their definition include a brief inline reminder (parenthetical or appositive). For scores above 7, no sentence should stack 3+ unfamiliar concepts without inline clarification
 - Actionability: reader knows what to do next / "so what?" is answered
 - Evidence quality: claims backed by specific data vs. unsupported assertions
 - Register discipline: voice stays within the target register level throughout; no drift toward editorial at inappropriate register levels (see Voice Register Spectrum)
@@ -475,7 +475,9 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 
 ### Comprehension Failures
 - [Para N]: Assumes knowledge of [X] that target audience lacks
-- [Para N, sentence M]: Ambiguous referent — "it" could mean [A] or [B]
+- [Para N, sentence M]: Ambiguous referent, "it" could mean [A] or [B]
+- [Para N]: Sentence stacks 3+ technical concepts without inline explanation: [list concepts]
+- [Para N]: Term "[X]" was defined in Key Terms / paragraph M but is used here without reminder; reader must scroll back
 
 ### Credibility Gaps
 - [Para N]: Claim [X] unsupported — reader would ask "says who?"
@@ -487,11 +489,13 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 ```
 
 **Behavioral rules**:
-- Read linearly, as a human would — don't skip around
+- Read linearly, as a human would; don't skip around
 - Flag the FIRST point where you'd stop reading (highest priority annotation)
+- Flag any sentence that stacks 3 or more unfamiliar or technical concepts simultaneously. If a sentence needs a glossary to parse, it needs inline clarification or splitting into shorter claims
+- Flag any sentence that depends on a definition from a Key Terms section or earlier paragraph that the reader may not remember. Technical terms used more than 2 paragraphs after their definition need a brief inline reminder (parenthetical or appositive)
 - Maximum 8 annotations per review (force prioritization)
 - Each annotation must cite specific text, not vague complaints
-- Never suggest rewrites — only identify problems (the coordinator rewrites during REVISE)
+- Never suggest rewrites; only identify problems (the coordinator rewrites during REVISE)
 
 ---
 
