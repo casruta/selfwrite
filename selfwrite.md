@@ -602,18 +602,15 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
 **How it works**:
 
 1. **Scan each paragraph** for words where the chosen word feels like the "default" or most obvious choice — the word any AI or average writer would reach for first
-2. **For each candidate word**, identify a less predictable synonym that:
-   - Preserves the exact meaning in context
-   - Matches the target register level (don't suggest casual synonyms for institutional prose)
-   - Reads naturally in the sentence — if a human editor would flag the substitution as awkward, reject it
-   - Is not itself an AI-tell word (don't replace one banned word with another)
-   - A human expert in the domain might plausibly choose over the default
-3. **Prioritize substitutions on**:
-   - Common AI-default words (the words LLMs most predictably choose: "significant," "crucial," "utilize," "implement," "demonstrate," "facilitate")
-   - Adjectives and adverbs (highest substitution flexibility)
-   - Verbs (second priority — verb choice strongly affects detection)
-   - Nouns (lowest priority — noun substitution risks changing meaning)
-4. **Target density**: 1 substitution per 2 sentences, maximum 2 per paragraph. Exceeding this density risks making the text awkward and unclear. **Maximum 8 substitutions total per review** (caps the triage burden on the coordinator).
+2. **For each candidate word**, apply three checks in strict order. All three must pass before proposing a substitution:
+   - **PRECISION CHECK (must pass first)**: Is the original word the most precise word for this concept in this specific context? If yes, do not substitute it regardless of how predictable it is. A precise word is never wrong just because it's predictable. Example: "checks" is more precise than "tests" when describing analytical verification steps; "tests" implies formal statistical methodology.
+   - **CONNOTATION CHECK**: Does the proposed synonym carry the same implied meaning, or just the same dictionary definition? Dictionary synonyms share denotation but often differ in connotation. "Declined" and "receded" share a denotation (went down) but "receded" implies spatial/tidal movement. If the connotation shifts, reject the substitution.
+   - **UNPREDICTABILITY CHECK (last)**: Only after precision and connotation checks pass, ask: is the synonym less predictable than the original? If yes, propose it. If no, skip.
+3. **Eligible word types**:
+   - Adjectives and adverbs: eligible (highest substitution flexibility, lowest precision risk)
+   - Verbs: eligible only if the verb is generic ("shows," "demonstrates," "indicates," "utilizes"). Domain-specific or precise verbs ("cleared," "reported," "declined") should not be substituted
+   - Nouns: do not substitute. Nouns carry too much domain-specific precision. Changing "checks" to "tests" or "rate" to "figure" shifts meaning in ways the agent cannot reliably detect
+4. **Target density**: 1 substitution per 2 sentences, maximum 2 per paragraph. **Maximum 5 substitutions total per review.** Fewer, better.
 
 **Register-matched synonym selection**:
 
@@ -631,6 +628,7 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
 - After proposing a substitution, read the full sentence with the synonym in place. If the sentence sounds awkward, forced, or unnatural when read aloud, reject the substitution. The test: would a journalist at The Economist or Globe and Mail write this sentence? If not, the synonym fails regardless of register match
 - If the draft already uses diverse vocabulary, propose fewer substitutions (the text doesn't need help)
 - The coordinator makes the final accept/reject decision during REVISE; the Synonym Agent only proposes
+- If in doubt, do not substitute. An unchanged predictable word is always better than an imprecise unpredictable one
 
 ---
 
