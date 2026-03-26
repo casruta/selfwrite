@@ -4,21 +4,11 @@
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-blue)
 
-A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that rewrites drafts into polished prose through scored, time-boxed, multi-agent iteration.
+A Claude Code skill that rewrites drafts into polished prose through scored, time-boxed, multi-agent iteration.
 
-Give it any text and a time budget. Three review agents run each cycle: one checks engagement, one flags AI-tell patterns, one swaps predictable word choices. After time runs out, a fourth agent reads the final draft cold with zero context. The skill then distills what worked into a skill file you can reuse.
+Give it any text and a time budget. Three review agents run each cycle: one catches where readers would disengage, one hunts AI-detectable patterns in your prose, one swaps predictable word choices. After time runs out, a fourth agent reads the final draft cold with zero prior context. The skill then distills what worked into a skill file you can reuse, so every future run in the same domain starts stronger.
 
-## Contents
-
-- [Install](#install)
-- [Usage](#usage)
-- [Modes](#modes)
-- [The Loop](#the-loop)
-- [Review Agents](#review-agents)
-- [Scoring](#scoring)
-- [Output](#output)
-- [Tips](#tips)
-- [Example Runs](#example-runs)
+The result: prose that reads like it was edited by a human, scores that climb 3-4 points on a 10-point scale, and a permanent record of which revision strategies actually moved the needle.
 
 ## Install
 
