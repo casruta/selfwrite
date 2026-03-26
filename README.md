@@ -4,7 +4,7 @@
 
 A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that turns drafts into publication-quality text through scored, time-boxed, multi-agent iteration.
 
-Give it an opinion column and 20 minutes. A data report and an hour. A skill file and 6 hours. It asks a few questions, then rewrites until time runs out -- with three independent review agents catching blind spots and breaking AI-detectable patterns at every iteration.
+Give it an opinion column and 20 minutes. A data report and an hour. A skill file and 6 hours. It asks a few questions, then rewrites until time runs out, with four independent review agents catching blind spots, breaking AI-detectable patterns, and verifying the final output makes sense to a first-time reader.
 
 ## Install
 
@@ -34,8 +34,8 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
 
 **3. The loop.** You choose the mode:
 
-- **Simple rewrite** -- THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT. Prose quality, structure, style
-- **Deep rewrite** -- adds a RESEARCH phase alongside THINK, surfacing missing context, counterarguments, and evidence gaps. You approve what gets incorporated
+- **Simple rewrite**: THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT. Prose quality, structure, style
+- **Deep rewrite**: adds a RESEARCH phase alongside THINK, surfacing missing context, counterarguments, and evidence gaps. You approve what gets incorporated
 
 ```
        ┌──────────────────────────────────────────────────┐
@@ -74,31 +74,41 @@ Duration: `Nm` or `Nh`. Minimum 10 minutes.
        └──────────────────────────────────────────────────┘
 ```
 
-- **THINK** -- identify the weakest dimension, adopt an expert persona (senior editor, beat reporter, research director), ask 2-3 questions that reference specific content in the draft, form a hypothesis
-- **DRAFT** -- apply THINK insights to produce a candidate revision (targeted changes only, not wholesale rewrite)
-- **REVIEW** -- three independent agents evaluate the draft in parallel:
-  - **Reader Agent** -- reads as the target audience, flags engagement drops, comprehension failures, credibility gaps
-  - **Voice Auditor** -- hunts for AI-tell patterns (sentence template repetition, rhythm monotony, hedge clustering, transition monotony, register violations)
-  - **Synonym Agent** -- suggests less-predictable synonym substitutions to break AI detection's statistical signature while preserving meaning and register
-- **REVISE** -- coordinator incorporates review annotations, triaging by severity (engagement drops first, AI-tell patterns second, synonym substitutions third)
-- **SCORE** -- adversarial scoring protocol with 8 safeguards
-- **REFLECT** -- log the result, check for plateau or over-optimization, adjust strategy
+- **THINK**: identify the weakest dimension, adopt an expert persona (senior editor, beat reporter, research director), ask 2-3 questions that reference specific content in the draft, form a hypothesis
+- **DRAFT**: apply THINK insights to produce a candidate revision (targeted changes only, not wholesale rewrite)
+- **REVIEW**: three independent agents evaluate the draft in parallel:
+  - **Reader Agent**: reads as the target audience, flags engagement drops, comprehension failures, concept stacking, scroll-back dependencies
+  - **Voice Auditor**: hunts for AI-tell patterns (sentence template repetition, rhythm monotony, hedge clustering, transition monotony, register violations, em-dash usage)
+  - **Synonym Agent**: suggests less-predictable synonym substitutions (1 per 2 sentences, max 2 per paragraph) to break AI detection's statistical signature
+- **REVISE**: coordinator incorporates review annotations, triaging by severity (engagement drops first, AI-tell patterns second, synonym substitutions third)
+- **SCORE**: adversarial scoring protocol with 8 safeguards
+- **REFLECT**: log the result, check for plateau or over-optimization, adjust strategy
 
-The loop uses the entire time budget. When all dimensions reach 7+ and gains stall, the loop shifts into the **Breakthrough Protocol** -- cycling through red team reading, structural rethinks, and constraint-based revision to push past the ceiling that incremental improvement can't reach.
+The loop uses the entire time budget. When all dimensions reach 7+ and gains stall, the loop shifts into the **Breakthrough Protocol**, cycling through red team reading, structural rethinks, and constraint-based revision to push past the ceiling that incremental improvement can't reach.
 
-**4. Distillation.** Selfwrite analyzes its log, extracts which questions and revision patterns produced the biggest score jumps, captures humanization techniques (which synonym substitutions worked, which AI-tell patterns were hardest to eliminate, which transition strategies produced the most natural flow), and writes a reusable skill file you can install for future runs.
+**4. Clean Slate Review.** After the iteration loop exits, a separate agent with **zero context** reads the final artifact cold. It has never seen the rubric, the iteration log, or any prior version. It flags anything that doesn't make sense to a first-time reader: unclear sentences, unsupported claims, unexplained jargon, internal contradictions, data that doesn't add up. Every question it raises must be resolved by editing the text before committing.
+
+**5. Distillation.** Selfwrite analyzes its log, extracts which questions and revision patterns produced the biggest score jumps, captures humanization techniques (which synonym substitutions worked, which AI-tell patterns were hardest to eliminate, which transition strategies produced the most natural flow), and writes a reusable skill file you can install for future runs.
 
 ## Review Agents
 
-Every draft passes through three independent agents before revisions are finalized. Each runs as a fresh subagent with no context carryover between iterations, providing genuine cognitive separation from the main loop.
+Four independent agents review the text across two phases:
+
+**During iteration (every cycle):** Three agents evaluate each draft in parallel, with no context carryover between iterations.
 
 | Agent | What it catches | Why it matters |
 |-------|----------------|----------------|
-| **Reader Agent** | Engagement drops, comprehension failures, credibility gaps, pacing issues | The same "mind" that wrote the text can't objectively evaluate it -- a separate reader perspective catches where real humans would stop reading |
-| **Voice Auditor** | AI-tell patterns (10-pattern catalog), sentence template repetition, rhythm monotony, transition diversity violations, register drift | Directly targets the detectable patterns that make text identifiable as machine-generated |
-| **Synonym Agent** | Default/predictable word choices that AI detection tools flag | Suggests less-predictable synonyms matched to the target register, breaking the statistical signature of always choosing the most probable token |
+| **Reader Agent** | Engagement drops, comprehension failures, credibility gaps, pacing issues, concept stacking (3+ technical terms in one sentence), scroll-back dependencies (terms used without inline reminder) | A separate reader perspective catches where real humans would stop reading or lose the thread |
+| **Voice Auditor** | AI-tell patterns (10-pattern catalog), sentence template repetition, rhythm monotony, transition diversity violations, register drift, em-dash usage (zero tolerance) | Directly targets the detectable patterns that make text identifiable as machine-generated |
+| **Synonym Agent** | Default/predictable word choices that AI detection tools flag | Suggests less-predictable synonyms at reduced density (1 per 2 sentences, max 2 per paragraph, max 8 total) to avoid awkward over-substitution |
 
-On short budgets (<15m), agents scale down automatically: under 15m only Voice Auditor and Synonym Agent run; under 10m only Synonym Agent runs.
+**After iteration (once, before distillation):**
+
+| Agent | What it checks | Why it matters |
+|-------|----------------|----------------|
+| **Clean Slate Agent** | Reads the final text with zero context (no rubric, no log, no history). Flags anything unclear, unsupported, contradictory, or dependent on definitions the reader may have forgotten | Iterative agents develop blind spots from watching the text evolve. A cold reader catches what they cannot |
+
+On short budgets (<15m), iteration agents scale down automatically: under 15m only Voice Auditor and Synonym Agent run; under 10m only Synonym Agent runs. The Clean Slate Agent always runs.
 
 ## Writing Quality
 
@@ -120,8 +130,8 @@ Eight safeguards: name weaknesses before scoring, compare to previous best, cite
 
 Each run produces a `selfwrite/runs/<run-id>/` directory with version snapshots, a scoring log (including per-iteration review agent annotation counts and synonym acceptance rates), and a distilled skill file with a Humanization Techniques section.
 
-- [`runs/nyt-upgrade/`](runs/nyt-upgrade/) -- 12 iterations, 4.95 → 8.15 composite, all six dimensions at 8+
-- [`runs/skill-upgrade/`](runs/skill-upgrade/) -- 14 iterations, 4.75 → 8.45 composite, research-grounded writing skill upgrade
+- [`runs/nyt-upgrade/`](runs/nyt-upgrade/): 12 iterations, 4.95 → 8.15 composite, all six dimensions at 8+
+- [`runs/skill-upgrade/`](runs/skill-upgrade/): 14 iterations, 4.75 → 8.45 composite, research-grounded writing skill upgrade
 
 ## Requirements
 
