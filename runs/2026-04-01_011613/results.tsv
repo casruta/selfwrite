@@ -1,0 +1,7 @@
+iteration	target	hypothesis	composite_before	composite_after	delta	decision	reason	mode	research_findings	research_approved	reader_annotations	voice_audit_count	synonym_applied	synonym_rejected	synonym_lexicon_sourced
+0	baseline	n/a	0	5.25	5.25	keep	baseline	regular	none	none	0	0	0	0	0
+1	argument_strength	intent-vs-outcome pivot	5.25	6.0	0.75	keep	stronger thesis with outcome framing	regular	none	none	6	7	2	3	1
+2	specificity	add FEC details and donor network	6.0	6.5	0.50	keep	added $5800 limit, Sacks $1M, Perez name, FEC ref	regular	none	none	3	6	3	1	2
+3	argument+structure	cumulative effect pivot and historical context	6.5	7.0	0.50	keep	reframed intent pivot, added GOP resistance context	regular	none	none	2	3	1	2	0
+4	voice+structure	lexicon phrase injection and kicker rewrite	7.0	7.45	0.45	keep	lets be honest + this isnt about X its about Y patterns	regular	none	none	0	2	2	0	2
+5	clean_slate	resolve cold reader flags	7.45	8.0	0.55	keep	added sourcing, Shannon Kent context, Vance policy example	regular	none	none	10	0	0	0	0
