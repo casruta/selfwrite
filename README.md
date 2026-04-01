@@ -123,6 +123,18 @@ Four agents review the text across two phases:
 
 The three per-cycle agents launch fresh each cycle with no memory of prior runs, so blind spots don't accumulate. Short budgets trigger automatic scaling: under 15 minutes, only Voice Auditor and Synonym Agent run; under 10, only Synonym Agent. The Clean Slate Agent always runs.
 
+## Lexicon System
+
+A lexicon is a curated vocabulary and phrasing profile tied to a specific publication. It solves the problem of synonym substitutions that don't fit the target voice: instead of picking "less predictable" words at random, the Synonym Agent draws from a publication's actual vocabulary.
+
+**Built-in lexicons**: The Economist, Reuters, NYT News Analysis, FiveThirtyEight/Vox, Op-Ed/Newsletter, Institutional/Statistical Report.
+
+Each lexicon defines: preferred vocabulary, avoided vocabulary, phrase patterns, sentence rhythm profile, and transition preferences. During intake, name a publication to load its lexicon, or let selfwrite pick one based on your register level.
+
+The lexicon also addresses AI detectability without sacrificing naturalness. AI detectors flag text that always picks the most probable word. Random synonym swaps break that pattern but can sound forced. A lexicon shifts word choices toward a specific human voice, so the output is both statistically varied (defeating detectors) and naturally consistent (sounding like a real publication).
+
+Over multiple runs, the distillation phase refines the lexicon: tracking which preferred words were used, which were rejected, and which new words emerged naturally. Install the distilled skill file to carry these refinements forward.
+
 ## Scoring
 
 Each cycle uses adversarial scoring with 8 safeguards against self-inflation:
@@ -162,7 +174,7 @@ cp selfwrite/runs/<run-id>/skill.md ~/.claude/skills/<domain>.md
 - **Answer intake questions honestly.** Vague answers ("general audience," "just make it better") yield vague rewrites. Specific answers ("skeptical CFO reading a one-pager," "cut 30% without losing data") yield precise ones.
 - **Simple rewrite for polish, deep rewrite for substance.** If the draft has everything it needs and just reads poorly, use simple. If it's missing evidence, context, or counterarguments, use deep.
 - **Longer budgets improve results, but returns diminish past 2h for short pieces.** A 20-minute column tightening often gains 2-3 points on the weighted composite (a 1-10 scale). A 6-hour deep rewrite of a long report can gain 4+.
-- **Name a publication model during intake.** Saying "write like the Economist" or "Globe and Mail feature tone" gives the voice system a concrete target. Selfwrite maps your answer to one of five register levels: institutional, formal analytical, authoritative journalism, accessible journalism, or conversational.
+- **Name a publication model during intake.** Saying "write like the Economist" or "Globe and Mail feature tone" loads a lexicon that constrains word choice, phrase patterns, and sentence rhythm to match that publication's voice. This is the single most effective setting for producing natural-sounding text that avoids AI detection. If unsure, skip — a default lexicon is chosen based on your register level.
 - **Check the distilled skill file after each run.** If the patterns hold up, install it. Future runs in the same domain start stronger.
 
 ## Example Runs

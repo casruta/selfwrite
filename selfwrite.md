@@ -55,7 +55,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - **Under 15m**: Run only the Voice Auditor and Synonym Agent (skip Reader Agent — the coordinator's own reading suffices for short pieces). Re-enable Reader Agent if any dimension drops below 5.
    - **Under 10m**: Run only the Synonym Agent (minimal overhead, still breaks detection patterns). Voice Auditor and Reader Agent are skipped entirely.
    - **15m and above**: All three agents run every iteration (default behavior).
-6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved\treader_annotations\tvoice_audit_count\tsynonym_applied\tsynonym_rejected`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations
+6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved\treader_annotations\tvoice_audit_count\tsynonym_applied\tsynonym_rejected\tsynonym_lexicon_sourced`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations. The `synonym_lexicon_sourced` column tracks how many accepted synonyms came from the active lexicon's preferred vocabulary
 7. **Rewrite mode decision.** Ask the user:
    > "Do you want me to research and add context as I revise, or focus purely on improving what's already here?"
    > 1. **Deep rewrite** — I'll research context, counterarguments, and missing evidence alongside each revision. You approve what gets added.
@@ -71,6 +71,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - **Purpose**: What should the reader know, believe, or do after reading? (inform, persuade, explain, entertain)
    - **Genre**: What kind of piece is this? (news report, feature, opinion/op-ed, explainer, data analysis, memo, executive summary)
    - **Tone**: How should it sound? (formal, conversational, urgent, reflective, authoritative) Name a publication or writer as a model if possible
+   - **Voice model**: Name a publication whose vocabulary and phrasing you want to match (e.g., "The Economist," "Reuters," "FiveThirtyEight"). This loads a lexicon that guides word choice and phrase patterns. If unsure, skip — a default lexicon is selected based on your register level. See **Lexicon System** for the full list.
 
    **Scoping questions** (ask if not obvious from the task):
    - **Length**: Target word count or length constraint?
@@ -92,12 +93,15 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    | Tone = institutional | Register level 1. Third-person throughout. Zero rhetorical questions. Zero direct address. Passive acceptable. "The index declined 46%" not "Crime is falling." See Voice Register Spectrum |
    | Genre = data analysis | Lead with finding, not narrative. Data speaks first. Charts introduced by what they show, not by dramatic framing. No hooks or kickers |
    | Genre = news report | Inverted pyramid: most important finding first. Attribution to sources. Third-person. No editorial commentary |
+   | Voice model = named publication | Load matching lexicon (see Lexicon System). Synonym Agent draws from lexicon preferred vocabulary, rejects lexicon avoided vocabulary. Voice Auditor uses lexicon phrase patterns and rhythm profile as targets. |
+   | Voice model = skipped | Default lexicon selected from register level (Register 1 → Institutional, Register 2 → Economist, Register 3 → NYT, Register 4 → FiveThirtyEight, Register 5 → Op-Ed) |
 
    **Follow-up questions** (ask based on initial answers):
    - If audience = experts: "What's the one thing they don't already know?" (This is your lede)
    - If purpose = persuade: "What's the strongest counterargument? Should I address it directly or preempt it?"
    - If genre = data analysis: "What's the finding that surprised you most?" (Lead with it)
    - If tone model named: "Should I match their sentence rhythm too, or just the overall register?"
+   - If voice model named: "Should I match only vocabulary, or also sentence structure and paragraph rhythm?"
    - If known weakness = "it's boring": "Where exactly does interest drop? After the opening? In the middle? During the data sections?"
 
    **Diagnostic questions** (ask when editing existing text):
@@ -159,6 +163,128 @@ Not all human writing patterns are inappropriate. Some make text sound more natu
 | Sentence fragments for emphasis | Forbidden | Forbidden | Allow at 4+ | "Not even close." works in op-eds, not in reports |
 
 **Key principle:** The Voice Auditor should stop penalizing patterns in the "Allow" column for the active register. An uneven paragraph or a short breathing-room sentence at Register 2 is a feature, not a defect. Penalizing these produces the uniform, mechanical rhythm that makes AI text detectable.
+
+---
+
+## Lexicon System
+
+A lexicon is a curated vocabulary and phrasing profile tied to a specific publication or journalism style. It solves the core synonym problem: a word can be a valid synonym in a dictionary but wrong for the voice. "Uptick" is fine at the Wall Street Journal; it's wrong in a StatsCan report. The lexicon constrains what the Synonym Agent can propose and what the Voice Auditor considers natural.
+
+### Why Lexicons Work Against AI Detection
+
+AI detectors measure how consistently text selects the most statistically probable word at each position. Clean AI output is detectable because it *always* picks the highest-probability token. Random synonym swaps break that pattern but introduce unnatural phrasing. A lexicon solves both problems: it shifts word choices away from the AI-default *toward* a specific human voice. The result is statistically varied (defeating detectors) and naturally consistent (sounding like a real writer). The text becomes predictable in a *human* way — the way a Globe and Mail columnist is predictable — rather than predictable in a machine way.
+
+### Lexicon Structure
+
+Each lexicon defines five components:
+
+**1. Preferred Vocabulary** — Words this publication reaches for. These are the Synonym Agent's first-choice replacements.
+
+**2. Avoided Vocabulary** — Words this publication would never use. These are hard rejections during synonym substitution, independent of the kill-list.
+
+**3. Phrase Patterns** — Multi-word constructions characteristic of this voice. These guide the Voice Auditor's naturalness check: a sentence using a phrase pattern from the active lexicon passes; an equivalent sentence using a generic construction gets flagged.
+
+**4. Sentence Rhythm Profile** — Typical sentence length range and variation pattern. Guides the Voice Auditor's rhythm analysis with a concrete target instead of abstract "vary your sentences."
+
+**5. Transition Preferences** — How this publication bridges paragraphs. Constrains the Voice Auditor's transition diversity check.
+
+### Built-In Lexicons
+
+#### The Economist (Register 2-3)
+
+| Component | Content |
+|-----------|---------|
+| **Preferred vocabulary** | "reckons," "arguably," "in practice," "yet," "still," "nevertheless," "granted," "oddly," "in effect," "a hefty," "scant," "a clutch of," "a dose of," "a measure of," "hard to square with," "lopsided," "dented," "nudged," "crimped," "buoyed," "bolstered" |
+| **Avoided vocabulary** | "utilize," "facilitate," "implement," "leverage," "robust," "comprehensive," "stakeholder," "synergy," "paradigm," "actionable," "holistic," "impactful" |
+| **Phrase patterns** | "[Claim]. Yet [counterpoint]." · "In practice, [reality]." · "[Number] is [vivid comparison]." · "The short answer is [X]. The longer one is [Y]." · "That is [understated judgment]." · "[Country/entity] has long [verb]." |
+| **Sentence rhythm** | 8-22 words typical. Alternates medium (12-18) with short punches (5-9). Rarely exceeds 25. One-sentence paragraphs used for emphasis, not as default. |
+| **Transition preferences** | Contrastive ("Yet," "Still," "Even so"), temporal ("Since then," "Until recently"), concessive ("Granted,"), referential noun bridges. Avoids "However," "Moreover," "Furthermore." |
+
+#### Reuters / Wire Service (Register 2-3)
+
+| Component | Content |
+|-----------|---------|
+| **Preferred vocabulary** | "said," "told," "according to," "rose," "fell," "gained," "slid," "trimmed," "edged," "topped," "marked," "posted," "flagged," "cited," "underscored," "eased," "tightened," "widened," "narrowed" |
+| **Avoided vocabulary** | "opined," "exclaimed," "revealed" (unless legal context), "admitted" (implies guilt), "claimed" (implies doubt unless intentional), "robust," "incredible," "amazing," "game-changing" |
+| **Phrase patterns** | "[Entity] said on [day]." · "[Metric] rose/fell [X]% to [Y]." · "The move comes as [context]." · "[Source], who spoke on condition of anonymity, said [X]." · "Shares in [company] [rose/fell] [X]% [timeframe]." |
+| **Sentence rhythm** | 10-20 words typical. Lead sentence front-loads the news. Attribution mid-sentence or end. Short sentences for breaking developments. |
+| **Transition preferences** | Temporal ("On Monday," "Earlier this week"), attribution pivots ("Analysts said," "Officials noted"), cause-effect ("The decision followed"). Avoids editorial transitions entirely. |
+
+#### NYT News Analysis (Register 3)
+
+| Component | Content |
+|-----------|---------|
+| **Preferred vocabulary** | "underscored," "signaled," "reflected," "complicated," "raised questions about," "scrambled," "fueled," "deepened," "prompted," "illustrated," "tested," "strained," "widened," "narrowed," "echoed," "marked a shift" |
+| **Avoided vocabulary** | "stakeholder," "leverage" (as verb), "utilize," "facilitate," "impact" (as verb in formal contexts), "paradigm shift," "game-changer," "unprecedented" (unless truly first-ever) |
+| **Phrase patterns** | "The result is [concrete consequence]." · "[Event] underscored [tension]." · "But [counterpoint] complicates the picture." · "For [group], the stakes are [specific]." · "What is less clear is [uncertainty]." · "[X], [appositive descriptor], said [Y]." |
+| **Sentence rhythm** | 12-25 words typical. Longer analytical sentences broken by 6-10 word pivots. Paragraphs 2-4 sentences. Occasional one-sentence paragraph for a turn. |
+| **Transition preferences** | Thematic pivots ("But the bigger question is"), contrastive pairs ("X did A. Y did the opposite."), narrative continuity ("That was before [event]"), stakes-raising ("For [group], the calculus is different"). |
+
+#### FiveThirtyEight / Vox Explainer (Register 4)
+
+| Component | Content |
+|-----------|---------|
+| **Preferred vocabulary** | "turns out," "here's the thing," "roughly," "about," "tends to," "on average," "the short version," "in other words," "the catch," "the upshot," "pretty," "actually," "basically," "a lot," "way more," "sort of" |
+| **Avoided vocabulary** | "utilize," "facilitate," "moreover," "furthermore," "thus," "hence," "whereby," "thereof," "heretofore," "notwithstanding," "it is worth noting" |
+| **Phrase patterns** | "Here's what that looks like:" · "In other words, [plain restatement]." · "That's [vivid reframe]." · "The short version: [summary]." · "But here's the catch: [complication]." · "[X] is about [intuitive number], or roughly [comparison]." |
+| **Sentence rhythm** | 8-20 words typical. Conversational pacing: short (5-8), medium (12-16), short (5-8). Rarely exceeds 22. Questions used as transitions. |
+| **Transition preferences** | Question-as-bridge ("So what does that mean?"), direct pivots ("But," "And," "So"), restatement ("In other words,"), the-catch ("The problem is,"). Avoids formal connectives ("Moreover," "Furthermore"). |
+
+#### Op-Ed / Newsletter (Register 5)
+
+| Component | Content |
+|-----------|---------|
+| **Preferred vocabulary** | "look," "listen," "here's the deal," "bluntly," "frankly," "the truth is," "let's be honest," "the real question," "nonsense," "overdue," "long past time," "misses the point," "gets it backward," "deserves better" |
+| **Avoided vocabulary** | "facilitate," "utilize," "synergize," "leverage," "paradigm," "holistic," "it is important to note," "it should be noted," "one might argue" |
+| **Phrase patterns** | "[Strong claim]. Full stop." · "Let me be direct: [thesis]." · "[Common belief]? [Blunt rebuttal]." · "This isn't about [deflection]. It's about [real issue]." · "The answer is simpler than it looks: [answer]." |
+| **Sentence rhythm** | 5-18 words typical. Punchy and staccato. Sentence fragments for emphasis. One-word paragraphs allowed. Rhythm drives argument, not just clarity. |
+| **Transition preferences** | Direct address ("Look,"), rhetorical questions, dramatic pivots ("But here's what nobody's saying:"), blunt conjunctions ("And," "But," "So"). |
+
+#### Institutional / Statistical Report (Register 1)
+
+| Component | Content |
+|-----------|---------|
+| **Preferred vocabulary** | "reported," "recorded," "observed," "measured," "estimated," "remained," "averaged," "accounted for," "represented," "constituted," "comprised," "totalled," "corresponded to," "attributable to" |
+| **Avoided vocabulary** | "dramatic," "alarming," "impressive," "incredible," "game-changing," "exciting," "interestingly," "notably," "it is worth noting," "it bears mentioning," "surprisingly" |
+| **Phrase patterns** | "[Metric] [verb] [value] in [period], [direction] from [prior value]." · "This represented a [X]% [increase/decrease] over [period]." · "[Category] accounted for [X]% of [total]." · "The [adjective] rate was [X], compared with [Y] in [prior period]." |
+| **Sentence rhythm** | 15-30 words typical. Uniform, measured pacing. No short punches. No sentence fragments. Complex sentences with embedded clauses are acceptable. |
+| **Transition preferences** | Temporal ("In the reference period," "Year over year"), categorical ("By province," "Among [group]"), methodological ("Using [method],"). Zero editorial transitions. |
+
+### Lexicon Selection
+
+During intake, the lexicon is selected in one of three ways:
+
+1. **Explicit naming**: User names a publication ("write like the Economist") → map to the matching built-in lexicon
+2. **Register inference**: If no publication is named but a register level is set, use the default lexicon for that register:
+   - Register 1 → Institutional
+   - Register 2 → The Economist
+   - Register 3 → NYT News Analysis
+   - Register 4 → FiveThirtyEight / Vox
+   - Register 5 → Op-Ed / Newsletter
+3. **No preference**: Default to NYT News Analysis (Register 3) — the same default as the register system
+
+If a user names a publication not in the built-in list, approximate: identify the closest register level and built-in lexicon, then note in the log that the lexicon is an approximation. The Voice Auditor should treat the lexicon as a guide, not a straitjacket, when approximating.
+
+### How Lexicons Flow Through the System
+
+| Agent | How it uses the lexicon |
+|-------|------------------------|
+| **Synonym Agent** | Preferred vocabulary is the first-choice replacement pool. Avoided vocabulary is a hard reject list (proposed synonyms that appear in it are automatically rejected). The precision/connotation/unpredictability checks still apply, but the unpredictability check is replaced by a **lexicon-fit check**: does this word appear in the preferred vocabulary or match the publication's voice? If yes, propose it even if it's "predictable" in isolation — it's unpredictable *for an AI*. |
+| **Voice Auditor** | Phrase patterns serve as positive examples during the naturalness check. A sentence that uses a lexicon phrase pattern is marked as natural. The rhythm analysis uses the lexicon's sentence rhythm profile as its target instead of abstract length-variation rules. Transition preferences replace the generic transition diversity rules for the active lexicon. |
+| **Reader Agent** | No direct lexicon input. The Reader Agent evaluates from the audience's perspective, not the publication's voice. |
+| **Clean Slate Agent** | No direct lexicon input. Reads cold. |
+| **Distillation** | The active lexicon is logged. The distilled skill file records which lexicon was used, which preferred words were most effective, and any words that should be added to or removed from the lexicon for this domain. |
+
+### Custom Lexicon Building
+
+Over multiple runs, the distillation phase accumulates lexicon refinements. Users can build a custom lexicon by:
+
+1. Running selfwrite with a built-in lexicon
+2. Reviewing the distilled skill file's lexicon notes
+3. The skill file records: words that worked (high synonym acceptance), words that were rejected repeatedly (should be added to avoided list), and phrase patterns that emerged naturally during revision
+4. Future runs in the same domain inherit these refinements when the distilled skill is installed
+
+This creates a feedback loop: each run makes the lexicon more precise for the user's domain and voice.
 
 ---
 
@@ -439,11 +565,11 @@ Log the result. Check convergence signals. Decide what to do next.
 - KEEP/REVERT decision with reasoning
 - Reader Agent annotations (summarized): count, top issues flagged
 - Voice Auditor annotations (summarized): patterns detected, rhythm analysis
-- Synonym Agent substitutions: count applied, count rejected, examples of each
+- Synonym Agent substitutions: count applied, count rejected, count lexicon-sourced, examples of each
 - (Deep rewrite only) RESEARCH findings surfaced, user's approval/rejection, and how approved findings were incorporated
 
 **2. Log to `results.tsv`** (structured):
-Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}\t{reader_annotations}\t{voice_audit_count}\t{synonym_applied}\t{synonym_rejected}`
+Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}\t{reader_annotations}\t{voice_audit_count}\t{synonym_applied}\t{synonym_rejected}\t{synonym_lexicon_sourced}`
 
 **3. Check Convergence Signals**
 
@@ -524,6 +650,7 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 - The full draft text
 - Voice register level (1-5)
 - The editorial anti-patterns list (from Voice Register Spectrum)
+- **The active lexicon** (phrase patterns, sentence rhythm profile, and transition preferences from the Lexicon System)
 
 **Output format** (structured annotations):
 ```
@@ -535,17 +662,26 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 ### Sentence Template Repetition
 - Template "[structure]" appears N times: [locations]
 
-### Rhythm Analysis
-- Sentence length sequence: [N, N, N, N, N...] — monotonous at [section]
-- Recommended: break with [short/long] sentence at [location]
+### Rhythm Analysis (against lexicon rhythm profile)
+- Lexicon target: [e.g., "8-22 words, alternating medium with short punches"]
+- Sentence length sequence: [N, N, N, N, N...] — [matches/deviates from] lexicon at [section]
+- Recommended: break with [short/long] sentence at [location] to match [publication] rhythm
 
-### Transition Diversity
+### Transition Diversity (against lexicon transition preferences)
+- Lexicon preferred transitions: [list from active lexicon]
 - Transition "[word/phrase]" used N times: [locations]
-- Consecutive paragraphs [N-M] all use [same transition type]
-- Suggested variety: [alternatives appropriate for register level]
+- Consecutive paragraphs [N-M] use transitions outside lexicon preferences
+- Suggested variety: [alternatives from lexicon transition preferences]
+
+### Phrase Pattern Matches
+- [Para N]: Uses lexicon phrase pattern "[pattern]" — natural ✓
+- [Para N]: Generic phrasing "[text]" could use lexicon pattern "[pattern]" instead
 
 ### Register Violations
 - [Location]: Anti-pattern "[name]" violates register level [N]
+
+### Avoided Vocabulary Detected
+- [Location]: "[word]" appears in lexicon's avoided vocabulary. Flag for Synonym Agent.
 
 ### Hedge Clustering
 - [Para N]: N hedges in M sentences: "[list]"
@@ -572,6 +708,10 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 
 The auditor checks that paragraph-to-paragraph transitions use varied connective strategies. Monotonous transitions are an AI-tell — humans naturally vary how they bridge paragraphs.
 
+**When a lexicon is active**, the lexicon's transition preferences take priority over the generic register table below. Use the lexicon's preferred transitions as the primary target and flag transitions that fall outside the lexicon's style. For example, if the Economist lexicon is active, prefer "Yet," "Still," "Even so," and referential noun bridges; flag "However," "Moreover," "Furthermore" even though they're technically acceptable at Register 2.
+
+**Fallback** (when no lexicon provides transition preferences):
+
 | Register | Acceptable transition strategies | Forbidden |
 |----------|--------------------------------|-----------|
 | 1-2 (Institutional/Formal) | Logical connectives ("consequently," "by contrast"), referential bridges (repeat key noun from prior paragraph), temporal markers ("in Q3," "subsequently"), data-driven pivots ("this 12% gap...") | Colloquial bridges, rhetorical questions as transitions |
@@ -584,20 +724,23 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
 - Minimum 3, maximum 10 annotations per audit
 - Each annotation must quote the specific offending text
 - False positives are costly — only flag patterns you're confident about
-- Rhythm analysis is mandatory every audit (compute sentence length sequence)
-- Transition diversity check is mandatory every audit
+- Rhythm analysis is mandatory every audit (compute sentence length sequence against the active lexicon's rhythm profile)
+- Transition diversity check is mandatory every audit (check against the active lexicon's transition preferences)
+- Phrase pattern check is mandatory every audit: scan for opportunities to use lexicon phrase patterns in place of generic constructions. Flag at most 3 opportunities per audit — the goal is natural adoption, not forced insertion
+- Flag any word from the active lexicon's avoided vocabulary that the Synonym Agent may have missed. Cross-agent coverage ensures nothing slips through
 - Never suggest rewrites — only identify patterns (the coordinator rewrites during REVISE)
 
 ---
 
 ### Synonym Agent
 
-**Purpose**: Suggest word substitutions that break the statistical signature of AI-generated text. AI detection tools work partly by measuring how consistently text uses the most predictable word choices. When every word is the "obvious" choice, the text reads as machine-generated. By substituting with less predictable but equally valid synonyms, the text's statistical profile shifts toward human-written patterns (humans naturally use more varied, less predictable vocabulary).
+**Purpose**: Suggest word substitutions that break the statistical signature of AI-generated text while staying within the vocabulary of a specific publication's voice. AI detection tools measure how consistently text selects the most probable word at each position. The Synonym Agent shifts word choices away from the AI-default *toward* the active lexicon's preferred vocabulary, producing text that is both statistically varied (defeating detectors) and naturally consistent (sounding like a real writer at a real publication).
 
 **Input** (provided in agent prompt):
 - The full draft text
 - Voice register level (1-5)
 - The current iteration number
+- **The active lexicon** (preferred vocabulary, avoided vocabulary, and phrase patterns from the Lexicon System)
 
 **Output format** (structured substitution list):
 ```
@@ -605,44 +748,55 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
 
 ### Proposed Replacements
 - [Para N, sentence M]: "[original word]" → "[suggested synonym]"
-  Why less predictable: [brief explanation — e.g., "most writers default to 'significant' here; 'sharp' is equally accurate but less expected"]
+  Lexicon match: yes (in preferred vocabulary) / no (not in lexicon, but fits voice)
+  Why it fits: [brief explanation — e.g., "Economist lexicon prefers 'reckons' over 'believes'; matches the publication's informal analytical tone"]
   Register-appropriate: yes/no.
 
-### Words Considered but Rejected
-- [Para N]: "[word]" — no suitable less-predictable synonym exists without changing meaning
+### Lexicon Rejections
+- [Para N]: "[original word]" → ~~"[rejected synonym]"~~ — rejected: word appears in lexicon's avoided vocabulary
+- [Para N]: "[original word]" → ~~"[rejected synonym]"~~ — rejected: word does not fit the publication's voice despite being a valid synonym
+
+### Words Considered but Retained
+- [Para N]: "[word]" — no lexicon-appropriate synonym exists without changing meaning
 
 ### Substitution Density
 - Total proposed: N substitutions across M paragraphs
+- Lexicon-sourced: N of M proposed (percentage from preferred vocabulary)
 - Target density: maximum 1 substitution per 2 sentences, no more than 2 per paragraph
 ```
 
 **How it works**:
 
-1. **Scan each paragraph** for words where the chosen word feels like the "default" or most obvious choice — the word any AI or average writer would reach for first
-2. **For each candidate word**, apply three checks in strict order. All three must pass before proposing a substitution:
-   - **PRECISION CHECK (must pass first)**: Is the original word the most precise word for this concept in this specific context? If yes, do not substitute it regardless of how predictable it is. A precise word is never wrong just because it's predictable. Example: "checks" is more precise than "tests" when describing analytical verification steps; "tests" implies formal statistical methodology.
+1. **Scan each paragraph** for words where the chosen word feels like the "default" or most obvious choice — the word any AI or average writer would reach for first. Also flag any word that appears in the active lexicon's avoided vocabulary — these must be replaced regardless of how natural they seem.
+2. **For each candidate word**, apply four checks in strict order. All four must pass before proposing a substitution:
+   - **LEXICON REJECT CHECK (must pass first)**: Does the original word appear in the active lexicon's avoided vocabulary? If yes, it must be replaced — proceed to find a substitute from the preferred vocabulary or a voice-appropriate alternative. Skip the precision check for avoided words (the lexicon overrides precision for words that betray the wrong voice).
+   - **PRECISION CHECK**: Is the original word the most precise word for this concept in this specific context? If yes, do not substitute it regardless of how predictable it is. A precise word is never wrong just because it's predictable. Exception: words on the lexicon's avoided list are replaced even if precise (see above).
    - **CONNOTATION CHECK**: Does the proposed synonym carry the same implied meaning, or just the same dictionary definition? Dictionary synonyms share denotation but often differ in connotation. "Declined" and "receded" share a denotation (went down) but "receded" implies spatial/tidal movement. If the connotation shifts, reject the substitution.
-   - **UNPREDICTABILITY CHECK (last)**: Only after precision and connotation checks pass, ask: is the synonym less predictable than the original? If yes, propose it. If no, skip.
+   - **LEXICON-FIT CHECK (replaces unpredictability check)**: Does the proposed synonym appear in the active lexicon's preferred vocabulary? If yes, propose it — it matches the target publication's voice and is inherently unpredictable for an AI. If the synonym is not in the preferred vocabulary, apply the original unpredictability test: is it less predictable than the original while still fitting the publication's voice? The naturalness test changes from "would a journalist write this?" to "would a journalist *at this specific publication* write this?"
 3. **Eligible word types**:
    - Adjectives and adverbs: eligible (highest substitution flexibility, lowest precision risk)
    - Verbs: eligible only if the verb is generic ("shows," "demonstrates," "indicates," "utilizes"). Domain-specific or precise verbs ("cleared," "reported," "declined") should not be substituted
    - Nouns: do not substitute. Nouns carry too much domain-specific precision. Changing "checks" to "tests" or "rate" to "figure" shifts meaning in ways the agent cannot reliably detect
 4. **Target density**: 1 substitution per 2 sentences, maximum 2 per paragraph. **Maximum 5 substitutions total per review.** Fewer, better.
 
-**Register-matched synonym selection**:
+**Lexicon-driven synonym selection** (replaces generic register matching):
 
-| Register | Synonym direction | Example |
-|----------|-------------------|---------|
-| 1-2 (Institutional) | Prefer precise, domain-specific alternatives. Avoid generic formal words that AI overuses ("utilize," "facilitate," "implement") | "increased" → "rose," "important" → "material," "shows" → "reflects" |
-| 3 (Authoritative) | Prefer specific over generic. Choose words a beat reporter would use over words a press release would use | "significant" → "sharp," "problem" → "bottleneck," "change" → "pivot" |
-| 4-5 (Conversational) | Prefer concrete, tactile, everyday words. Avoid anything that sounds like a corporate memo | "utilize" → "use," "facilitate" → "help," "implement" → "build," "demonstrates" → "shows" |
+The active lexicon's preferred and avoided vocabulary take priority over generic register rules. When the lexicon provides a clear preferred synonym, use it. When no lexicon word fits, fall back to the register-level guidance below.
+
+| Register | Lexicon | Synonym direction | Example |
+|----------|---------|-------------------|---------|
+| 1 | Institutional | Draw from: "reported," "recorded," "observed," "remained." Reject: "dramatic," "alarming," "exciting." | "increased" → "rose," "important" → "material" |
+| 2 | Economist | Draw from: "reckons," "scant," "buoyed," "dented." Reject: "utilize," "stakeholder," "synergy." | "significant" → "hefty," "shows" → "reflects," "decreased" → "crimped" |
+| 3 | NYT | Draw from: "underscored," "signaled," "complicated," "strained." Reject: "stakeholder," "leverage," "paradigm shift." | "showed" → "illustrated," "caused" → "fueled," "changed" → "marked a shift" |
+| 4 | FiveThirtyEight | Draw from: "turns out," "roughly," "tends to," "the catch." Reject: "utilize," "moreover," "thus." | "demonstrates" → "shows," "approximately" → "roughly," "significant" → "pretty big" |
+| 5 | Op-Ed | Draw from: "bluntly," "nonsense," "overdue," "deserves better." Reject: "facilitate," "holistic," "it should be noted." | "incorrect" → "wrong," "important" → "overdue," "argues" → "insists" |
 
 **Behavioral rules**:
 - Fewer is better. The goal is subtle statistical disruption, not a vocabulary overhaul. If a paragraph reads naturally, propose zero substitutions for it
 - Never substitute proper nouns, technical terms, or quoted material
 - Never substitute words that are already unusual or distinctive; these are humanizing
 - Each substitution must include reasoning for why the original word is the "default" choice
-- After proposing a substitution, read the full sentence with the synonym in place. If the sentence sounds awkward, forced, or unnatural when read aloud, reject the substitution. The test: would a journalist at The Economist or Globe and Mail write this sentence? If not, the synonym fails regardless of register match
+- After proposing a substitution, read the full sentence with the synonym in place. If the sentence sounds awkward, forced, or unnatural when read aloud, reject the substitution. The test: would a journalist *at the publication matching the active lexicon* write this sentence? If not, the synonym fails regardless of register match
 - If the draft already uses diverse vocabulary, propose fewer substitutions (the text doesn't need help)
 - The coordinator makes the final accept/reject decision during REVISE; the Synonym Agent only proposes
 - If in doubt, do not substitute. An unchanged predictable word is always better than an imprecise unpredictable one
@@ -867,6 +1021,7 @@ Identify which question patterns produced the biggest score deltas.
 - **Reader Agent**: Which engagement drops recurred across iterations? What audience assumptions kept failing? Which paragraph positions were most prone to attention loss?
 - **Voice Auditor**: Which AI-tell patterns were hardest to eliminate? Which techniques successfully removed them? What transition strategies worked best for the target register? Did rhythm monotony persist despite targeted fixes?
 - **Synonym Agent**: What was the average acceptance rate for proposed substitutions? Which word categories (adjectives, verbs, adverbs) had the highest acceptance rate? Were there register-specific patterns in which synonyms worked?
+- **Lexicon effectiveness**: Which lexicon was active? What percentage of accepted synonyms came from the lexicon's preferred vocabulary? Which preferred words were never used (candidates for removal)? Which non-lexicon words were repeatedly accepted (candidates for addition)? Were any avoided-vocabulary words hard to replace (suggesting the avoided list is too aggressive)?
 
 ### Step 3: Generate the Skill File
 Write to `runs/<id>/skill.md`:
@@ -889,12 +1044,22 @@ Write to `runs/<id>/skill.md`:
 
 ## Humanization Techniques
 [Patterns that successfully reduced AI detectability, organized by category:]
+### Lexicon Refinements
+[Active lexicon: [name]. Effectiveness: [X]% of accepted synonyms were lexicon-sourced.]
+#### Words to Add to Preferred Vocabulary
+[Non-lexicon words that were repeatedly accepted — these fit the voice and should be added]
+#### Words to Remove from Preferred Vocabulary
+[Lexicon words that were never used or consistently rejected — not useful for this domain]
+#### Words to Add to Avoided Vocabulary
+[Words that the Voice Auditor or Synonym Agent repeatedly flagged — should be hard-rejected]
+#### Phrase Patterns That Emerged
+[New phrase constructions that appeared naturally during revision and fit the lexicon's voice]
 ### Synonym Substitution Patterns
-[Which word replacements worked best? Register-specific preferences?]
+[Which word replacements worked best? How many were lexicon-sourced vs. ad-hoc?]
 ### Transition Diversity
-[Which transition strategies produced the most natural paragraph flow?]
+[Which transition strategies produced the most natural paragraph flow? Did lexicon preferences hold?]
 ### Rhythm Breaking
-[Which sentence length variations were most effective?]
+[Which sentence length variations were most effective? Did the lexicon rhythm profile help?]
 ### AI-Tell Elimination
 [Which AI-tell patterns were hardest to remove? What finally worked?]
 
