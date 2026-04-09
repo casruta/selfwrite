@@ -21,6 +21,49 @@ Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). No o
 
 Verify by running `/selfwrite` in any project.
 
+### Pre-approve the tools the skill uses (optional but recommended)
+
+On a fresh install, Claude Code prompts for permission on every tool the skill invokes. To pre-approve selfwrite's tool set, add this to your `~/.claude/settings.json` (or the project-local `.claude/settings.json`):
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(date:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Agent",
+      "WebSearch",
+      "WebFetch"
+    ]
+  }
+}
+```
+
+If you prefer to approve tools interactively on first use, skip this step.
+
+## First Run (smoke test)
+
+Before committing to a long budget, verify everything is wired up with a tiny task:
+
+```
+/selfwrite "write a 150-word plain-prose explanation of compound interest" 15m
+```
+
+This runs in simple-rewrite mode with a minimal budget. Expected outputs:
+- A new `selfwrite/runs/YYYY-MM-DD_HHMMSS/` directory
+- A `decomposition.md` chain (3–5 sub-prompts)
+- 3 iterations in `log.md` with scores in `results.tsv`
+- A `skill.md` distilled file
+- A `summary.md` with a score trajectory table
+
+If the run exits before the 15 minutes are up, check `log.md` for the exit reason. The HARD RULE says the loop should use the full budget; early exit means the environment is missing a tool the skill expected.
+
 ## How to use it 
 
 ```

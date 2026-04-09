@@ -1,12 +1,10 @@
 ---
 name: selfwrite
 description: >
-  Self-improving iteration loop. Takes any task and a time budget, autonomously
-  iterates to produce the best possible output, then distills learnings into a
-  reusable skill file. Use when the user says /selfwrite, asks to "iterate on
-  this with a time budget", "improve this for N minutes", or wants autonomous
-  self-improving output on any task. Works for any domain: financial reports,
-  code, data analysis, writing, strategy documents, or anything else.
+  Time-boxed self-improvement loop with a multi-agent iteration cycle, research
+  tree, and lexicon system. Use when the user says /selfwrite, asks to iterate
+  on something with a time budget, or wants autonomous self-improving output
+  on any task — writing, code, reports, data analysis, strategy documents.
 command: selfwrite
 argument-hint: '"task description" <duration>' (e.g., "financial report on Q4 budget data" 30m)
 ---
@@ -25,6 +23,23 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
 - If no duration: ask "How long should I run? (e.g., 15m, 30m, 1h)"
 - If no task: ask "What should I create?"
 - Minimum duration: 10 minutes. Below this, warn and suggest longer.
+
+## Tools
+
+This skill uses the following Claude Code tools. Every launch site below refers back to this list.
+
+| Tool | Used for |
+|---|---|
+| `Bash` | `date +%s` for time tracking, `mkdir`/`ls` for run directory setup, reading git state when relevant |
+| `Write` | Creating run-directory files (`rubric.md`, `log.md`, `results.tsv`, `decomposition.md`, `skill.md`, `summary.md`) and version snapshots in `versions/` |
+| `Edit` | In-place revisions to the working artifact during REVISE |
+| `Read` | Reading prior versions and the active artifact at the top of each iteration |
+| `Glob` / `Grep` | Locating referenced files when the task description points at an existing file in the repo |
+| `Agent` (subagent_type: general-purpose) | Launching the Reader Agent, Voice Auditor, Clean Slate Agent, and Dependency Verifier. Each launch is a fresh subagent with no context carryover |
+| `WebSearch` | RESEARCH phase only (deep rewrite mode) — executing level-1 through level-N queries in the query decomposition tree |
+| `WebFetch` | RESEARCH phase only — fetching the specific sources returned by WebSearch when the delta test requires verifying a primary document |
+
+**All subagent launches must use the actual `Agent` tool.** Do not narrate a launch as if a subagent were invoked. If the `Agent` tool is not available in the current session, fall back to the coordinator doing the pass inline and log the fallback in `log.md`.
 
 ## Setup
 
@@ -591,7 +606,7 @@ The hypothesis must name: the change, the target dimension, the expected score d
 
 ### RESEARCH (deep rewrite only)
 
-**Skip this section entirely in simple-rewrite mode.** RESEARCH runs in parallel with THINK. While THINK diagnoses the weakest stylistic dimension, RESEARCH diagnoses substantive gaps — and it does so by building a bounded decomposition tree rather than a single flat search. One search often raises the next question; the tree lets the loop follow that thread within a single iteration.
+**Skip this section entirely in simple-rewrite mode.** RESEARCH runs in parallel with THINK. While THINK diagnoses the weakest stylistic dimension, RESEARCH diagnoses substantive gaps — and it does so by building a bounded decomposition tree rather than a single flat search. One search often raises the next question; the tree lets the loop follow that thread within a single iteration. Every node in the tree executes its query via the `WebSearch` tool. Primary sources surfaced by a search are followed with `WebFetch` when the 2-of-3 delta test requires verifying a specific filing, statute, or peer-reviewed paper. Log the tool used for each node in `research/findings.md`.
 
 **1. Gap Analysis** — Read the current artifact and identify up to 3 gaps:
 - Claims that lack evidence or sourcing
@@ -672,7 +687,7 @@ The draft is a candidate, not the final version. It will be reviewed by two inde
 
 ### REVIEW
 
-Launch two review agents **in parallel** against the draft. Each agent is a fresh subagent with no context carryover from previous iterations — this prevents them from developing the same blind spots as the main loop.
+Launch two review agents **in parallel** against the draft using the `Agent` tool (`subagent_type: general-purpose`), one call per agent in a single message for parallelism. Each agent is a fresh subagent with no context carryover from previous iterations — this prevents them from developing the same blind spots as the main loop.
 
 Each agent receives: the draft text, the rubric, the target audience profile (from intake), the current scores, and the specific dimension being targeted this iteration.
 
@@ -798,7 +813,7 @@ Run `date +%s`. If remaining time < 1.5x average iteration time, exit the loop a
 
 ## Review Agents
 
-Three independent agents review every draft during the REVIEW step. Each runs as a fresh subagent (no context carryover between iterations) to provide genuine cognitive separation from the main loop. All three launch **in parallel**.
+Two independent agents review every draft during the REVIEW step. Each runs as a fresh subagent (no context carryover between iterations) to provide genuine cognitive separation from the main loop. Both launch **in parallel**.
 
 ### Reader Agent
 
@@ -966,6 +981,8 @@ The coordinator handles word-level substitution directly during REVISE, guided b
 **Purpose**: Decide whether each deep-tree research finding (depth ≥ 4) is unconditionally useful to the current draft, conditionally useful (and what the condition is), or irrelevant. The mechanical 2-of-3 delta test controls *whether* a node expands; the Dependency Verifier controls *whether the result surfaces* to the user. It answers the one question deterministic rules cannot: "does this deep finding matter to *this* draft, given what's already in it?"
 
 **When it runs**: during the RESEARCH phase of a deep-rewrite iteration, **only** when the research tree contains at least one node at depth ≥ 4. Skipped entirely otherwise — shallow trees do not need a verifier. Also skipped under the short-budget and decay rules in the RESEARCH scaling table (see RESEARCH section).
+
+**Invocation**: launch via the `Agent` tool (`subagent_type: general-purpose`). Run once per iteration, in parallel with the Reader Agent and Voice Auditor when the tree has depth-≥-4 nodes; otherwise skipped.
 
 **Input** (provided in the agent prompt):
 - The current draft text (nothing else from the draft side — no iteration history, no rubric, no scores, no prior verifier reports)
@@ -1176,7 +1193,7 @@ Iterative review agents (Reader, Voice Auditor) develop blind spots because they
 ```
 cycle = 1
 WHILE cycle <= 3:
-  1. Launch Clean Slate Agent on current artifact
+  1. Launch Clean Slate Agent on current artifact via the `Agent` tool (`subagent_type: general-purpose`)
   2. IF zero questions → exit loop, proceed to distillation
   3. Coordinator resolves every question by editing the artifact
   4. IF same questions recur from the previous cycle → accept and log as unresolvable
@@ -1189,7 +1206,7 @@ IF cycle > 3 and questions remain → log remaining issues in summary, proceed t
 - The coordinator must resolve **every question** by editing the final artifact. No question may be dismissed without a text change.
 - Resolution options: add a clarifying phrase, rewrite the sentence for clarity, add a data reference, or correct the inconsistency.
 - If a question reveals a factual error that cannot be fixed without research (and the run is in simple-rewrite mode), flag it in the summary as an unresolved issue rather than fabricating a fix.
-- After resolving all questions in a cycle, re-launch the Clean Slate Agent on the updated text. Fixes often introduce new awkward phrasing; the loop catches this.
+- After resolving all questions in a cycle, re-launch the Clean Slate Agent (fresh `Agent` call, `subagent_type: general-purpose`) on the updated text. Fixes often introduce new awkward phrasing; the loop catches this.
 
 **Behavioral rules**:
 - Read the text as if encountering it for the first time. Do not assume any background knowledge beyond what the text itself provides.
@@ -1316,3 +1333,22 @@ Present the summary to the user. Offer to install the generated skill to `~/.cla
 | Strategy | Board advisor | "What's the downside case? What was rejected?" |
 
 Adapt the persona to the task domain. These are starting points, not rigid templates.
+
+## Cost Awareness
+
+Selfwrite is deliberately token-heavy. A deep-rewrite run spawns subagents, searches the web, and keeps every draft — that's what makes it improve. Before committing to a long budget, know what you're paying for.
+
+| Budget | Typical iterations | Typical subagent launches | Rough cost band |
+|---|---|---|---|
+| 15m | 3 | 6–8 | Low |
+| 30m | 5–6 | 12–18 | Low–Medium |
+| 1h | 8–10 | 20–30 | Medium |
+| 6h | 18–25 | 50–80 | High |
+
+Bands are intentionally fuzzy — actual cost depends on task length, deep vs simple rewrite, and how often the research tree expands past depth 3.
+
+**Rules of thumb**:
+- **First run of the day**: use a 15m budget on a short task to confirm the environment is working before committing to anything long.
+- **Deep rewrite on long budgets**: expect 2–3× the cost of a simple rewrite at the same budget due to the research tree and WebSearch calls.
+- **If the loop reports "no gains for 3 iterations" and you're under 50% of budget elapsed**, consider exiting early — this is one of the only conditions where breaking the HARD RULE is warranted, since further iteration is unlikely to justify the spend.
+- Every run writes `results.tsv` with per-iteration deltas. Skim it mid-run if you want to check whether the spend is producing score movement.
