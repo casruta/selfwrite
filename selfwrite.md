@@ -13,7 +13,7 @@ argument-hint: '"task description" <duration>' (e.g., "financial report on Q4 bu
 
 # Selfwrite: Autonomous Self-Improving Loop
 
-You are running a time-boxed self-improvement loop. Each iteration follows a multi-agent cycle: **THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT**. You will iterate on a task, score yourself honestly, ask expert-level questions to push quality higher, and distill what you learn into a reusable skill file. Three independent review agents — a **Reader Agent**, a **Voice Auditor**, and a **Synonym Agent** — evaluate every draft from distinct cognitive perspectives before revisions are finalized, catching blind spots that self-evaluation misses and breaking the statistical patterns that make AI-generated text detectable.
+You are running a time-boxed self-improvement loop. Each iteration follows a multi-agent cycle: **THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT**. You will iterate on a task, score yourself honestly, ask expert-level questions to push quality higher, and distill what you learn into a reusable skill file. Two independent review agents — a **Reader Agent** and a **Voice Auditor** — evaluate every draft from distinct cognitive perspectives before revisions are finalized, catching blind spots that self-evaluation misses.
 
 **HARD RULE: Use the ENTIRE time budget. Never exit early. The time budget is an investment in depth, not a deadline to beat.**
 
@@ -51,11 +51,11 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - Short budget (<15m): 60% / 10% / 20% / 10%
    - Long budget (>60m): 45% / 10% / 35% / 10%
 
-   **Review agent scaling for short budgets**: On budgets under 15 minutes, the three-agent REVIEW step consumes a larger fraction of each iteration. To ensure the minimum 3 iterations:
-   - **Under 15m**: Run only the Voice Auditor and Synonym Agent (skip Reader Agent — the coordinator's own reading suffices for short pieces). Re-enable Reader Agent if any dimension drops below 5.
-   - **Under 10m**: Run only the Synonym Agent (minimal overhead, still breaks detection patterns). Voice Auditor and Reader Agent are skipped entirely.
-   - **15m and above**: All three agents run every iteration (default behavior).
-6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved\treader_annotations\tvoice_audit_count\tsynonym_applied\tsynonym_rejected\tsynonym_lexicon_sourced`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations. The `synonym_lexicon_sourced` column tracks how many accepted synonyms came from the active lexicon's preferred vocabulary
+   **Review agent scaling for short budgets**: On budgets under 15 minutes, the two-agent REVIEW step consumes a larger fraction of each iteration. To ensure the minimum 3 iterations:
+   - **Under 15m**: Run only the Voice Auditor (skip Reader Agent — the coordinator's own reading suffices for short pieces). Re-enable Reader Agent if any dimension drops below 5.
+   - **Under 10m**: Skip both review agents. The coordinator does its own pass against the rubric and the active lexicon.
+   - **15m and above**: Both agents run every iteration (default behavior).
+6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved\treader_annotations\tvoice_audit_count`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations.
 7. **Rewrite mode decision.** Ask the user:
    > "Do you want me to research and add context as I revise, or focus purely on improving what's already here?"
    > 1. **Deep rewrite** — I'll research context, counterarguments, and missing evidence alongside each revision. You approve what gets added.
@@ -93,7 +93,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    | Tone = institutional | Register level 1. Third-person throughout. Zero rhetorical questions. Zero direct address. Passive acceptable. "The index declined 46%" not "Crime is falling." See Voice Register Spectrum |
    | Genre = data analysis | Lead with finding, not narrative. Data speaks first. Charts introduced by what they show, not by dramatic framing. No hooks or kickers |
    | Genre = news report | Inverted pyramid: most important finding first. Attribution to sources. Third-person. No editorial commentary |
-   | Voice model = named publication | Load matching lexicon (see Lexicon System). Synonym Agent draws from lexicon preferred vocabulary, rejects lexicon avoided vocabulary. Voice Auditor uses lexicon phrase patterns and rhythm profile as targets. |
+   | Voice model = named publication | Load matching lexicon (see Lexicon System). Voice Auditor uses lexicon phrase patterns, rhythm profile, and transition preferences as targets, and flags any word appearing in the lexicon's avoided vocabulary. The coordinator applies lexicon-aware word choices during REVISE. |
    | Voice model = skipped | Default lexicon selected from register level (Register 1 → Institutional, Register 2 → Economist, Register 3 → NYT, Register 4 → FiveThirtyEight, Register 5 → Op-Ed) |
 
    **Follow-up questions** (ask based on initial answers):
@@ -168,7 +168,7 @@ Not all human writing patterns are inappropriate. Some make text sound more natu
 
 ## Lexicon System
 
-A lexicon is a curated vocabulary and phrasing profile tied to a specific publication or journalism style. It solves the core synonym problem: a word can be a valid synonym in a dictionary but wrong for the voice. "Uptick" is fine at the Wall Street Journal; it's wrong in a StatsCan report. The lexicon constrains what the Synonym Agent can propose and what the Voice Auditor considers natural.
+A lexicon is a curated vocabulary and phrasing profile tied to a specific publication or journalism style. It solves the core word-choice problem: a word can be technically correct but wrong for the voice. "Uptick" is fine at the Wall Street Journal; it's wrong in a StatsCan report. The lexicon tells the Voice Auditor what to consider natural and tells the coordinator what words to reach for during REVISE.
 
 ### Why Lexicons Work Against AI Detection
 
@@ -178,9 +178,9 @@ AI detectors measure how consistently text selects the most statistically probab
 
 Each lexicon defines five components:
 
-**1. Preferred Vocabulary** — Words this publication reaches for. These are the Synonym Agent's first-choice replacements.
+**1. Preferred Vocabulary** — Words this publication reaches for. The coordinator pulls from this pool during REVISE when a word in the draft feels generic or AI-default.
 
-**2. Avoided Vocabulary** — Words this publication would never use. These are hard rejections during synonym substitution, independent of the kill-list.
+**2. Avoided Vocabulary** — Words this publication would never use. The Voice Auditor flags these on sight; the coordinator must replace them during REVISE. Independent of the kill-list.
 
 **3. Phrase Patterns** — Multi-word constructions characteristic of this voice. These guide the Voice Auditor's naturalness check: a sentence using a phrase pattern from the active lexicon passes; an equivalent sentence using a generic construction gets flagged.
 
@@ -267,10 +267,10 @@ If a user names a publication not in the built-in list, approximate: identify th
 
 ### How Lexicons Flow Through the System
 
-| Agent | How it uses the lexicon |
+| Stage | How it uses the lexicon |
 |-------|------------------------|
-| **Synonym Agent** | Preferred vocabulary is the first-choice replacement pool. Avoided vocabulary is a hard reject list (proposed synonyms that appear in it are automatically rejected). The precision/connotation/unpredictability checks still apply, but the unpredictability check is replaced by a **lexicon-fit check**: does this word appear in the preferred vocabulary or match the publication's voice? If yes, propose it even if it's "predictable" in isolation — it's unpredictable *for an AI*. |
-| **Voice Auditor** | Phrase patterns serve as positive examples during the naturalness check. A sentence that uses a lexicon phrase pattern is marked as natural. The rhythm analysis uses the lexicon's sentence rhythm profile as its target instead of abstract length-variation rules. Transition preferences replace the generic transition diversity rules for the active lexicon. |
+| **Voice Auditor** | Phrase patterns serve as positive examples during the naturalness check. A sentence that uses a lexicon phrase pattern is marked as natural. The rhythm analysis uses the lexicon's sentence rhythm profile as its target instead of abstract length-variation rules. Transition preferences replace the generic transition diversity rules for the active lexicon. Scans for any word in the avoided vocabulary and flags each occurrence for the coordinator to replace during REVISE. |
+| **REVISE (coordinator)** | When addressing Voice Auditor annotations, the coordinator reaches for preferred-vocabulary replacements first. Avoided vocabulary must be replaced; preferred vocabulary is the default replacement pool. Ad-hoc word choices are acceptable only when no preferred word fits. |
 | **Reader Agent** | No direct lexicon input. The Reader Agent evaluates from the audience's perspective, not the publication's voice. |
 | **Clean Slate Agent** | No direct lexicon input. Reads cold. |
 | **Distillation** | The active lexicon is logged. The distilled skill file records which lexicon was used, which preferred words were most effective, and any words that should be added to or removed from the lexicon for this domain. |
@@ -281,7 +281,7 @@ Over multiple runs, the distillation phase accumulates lexicon refinements. User
 
 1. Running selfwrite with a built-in lexicon
 2. Reviewing the distilled skill file's lexicon notes
-3. The skill file records: words that worked (high synonym acceptance), words that were rejected repeatedly (should be added to avoided list), and phrase patterns that emerged naturally during revision
+3. The skill file records: words that worked (repeatedly chosen from the preferred pool during REVISE), words that were flagged repeatedly by the Voice Auditor (should be added to the avoided list), and phrase patterns that emerged naturally during revision
 4. Future runs in the same domain inherit these refinements when the distilled skill is installed
 
 This creates a feedback loop: each run makes the lexicon more precise for the user's domain and voice.
@@ -351,12 +351,12 @@ Run until the iteration phase deadline. Minimum 3 iterations per run.
   └────┬────┘                                             │
        │                                                  │
        ▼                                                  │
-  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
-  │  READER  │  │  VOICE   │  │ SYNONYM  │  (parallel)   │
-  │  AGENT   │  │ AUDITOR  │  │  AGENT   │               │
-  └────┬─────┘  └────┬─────┘  └────┬─────┘               │
-       │              │             │                     │
-       ▼              ▼             ▼                     │
+  ┌──────────┐  ┌──────────┐                              │
+  │  READER  │  │  VOICE   │  (parallel)                  │
+  │  AGENT   │  │ AUDITOR  │                              │
+  └────┬─────┘  └────┬─────┘                              │
+       │              │                                   │
+       ▼              ▼                                   │
   ┌──────────────────────────────────────┐                │
   │  REVISE  │  Incorporate annotations  │                │
   └────┬─────────────────────────────────┘                │
@@ -396,12 +396,12 @@ Run until the iteration phase deadline. Minimum 3 iterations per run.
           └────┬────┘                                     │
                │                                          │
                ▼                                          │
-  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
-  │  READER  │  │  VOICE   │  │ SYNONYM  │  (parallel)   │
-  │  AGENT   │  │ AUDITOR  │  │  AGENT   │               │
-  └────┬─────┘  └────┬─────┘  └────┬─────┘               │
-       │              │             │                     │
-       ▼              ▼             ▼                     │
+  ┌──────────┐  ┌──────────┐                              │
+  │  READER  │  │  VOICE   │  (parallel)                  │
+  │  AGENT   │  │ AUDITOR  │                              │
+  └────┬─────┘  └────┬─────┘                              │
+       │              │                                   │
+       ▼              ▼                                   │
   ┌──────────────────────────────────────┐                │
   │  REVISE  │  Incorporate annotations  │                │
   └────┬─────────────────────────────────┘                │
@@ -503,7 +503,7 @@ The draft is a candidate, not the final version. It will be reviewed by three in
 
 ### REVIEW
 
-Launch three review agents **in parallel** against the draft. Each agent is a fresh subagent with no context carryover from previous iterations — this prevents them from developing the same blind spots as the main loop.
+Launch two review agents **in parallel** against the draft. Each agent is a fresh subagent with no context carryover from previous iterations — this prevents them from developing the same blind spots as the main loop.
 
 Each agent receives: the draft text, the rubric, the target audience profile (from intake), the current scores, and the specific dimension being targeted this iteration.
 
@@ -512,8 +512,7 @@ Each agent returns structured annotations (location + issue + severity). See the
 | Agent | Focus | Runs in parallel? |
 |-------|-------|--------------------|
 | **Reader Agent** | Engagement, comprehension, credibility, pacing — reads as the target audience | Yes |
-| **Voice Auditor** | AI-tell patterns, sentence template repetition, rhythm monotony, register violations, transition diversity | Yes |
-| **Synonym Agent** | Suggests 2nd/3rd-most-probable synonym substitutions to break AI detection statistical signatures | Yes |
+| **Voice Auditor** | AI-tell patterns, sentence template repetition, rhythm monotony, register violations, transition diversity, lexicon avoided-vocabulary violations | Yes |
 
 ---
 
@@ -524,7 +523,7 @@ Incorporate review annotations into a final version. The coordinator (not the ag
 **Triage order:**
 1. **Engagement drops** (Reader Agent) — highest priority, these are where readers stop reading
 2. **AI-tell patterns** (Voice Auditor) — second priority, these make the text detectable
-3. **Synonym substitutions** (Synonym Agent) — apply selectively, only where the substitution reads naturally
+3. **Avoided-vocabulary violations** (Voice Auditor) — replace each flagged word, drawing first from the lexicon's preferred vocabulary
 4. **Transition diversity** (Voice Auditor) — vary paragraph connectors
 5. **Pacing and comprehension** (Reader Agent) — lower priority but still address
 6. **Rhythm fixes** (Voice Auditor) — break monotonous sentence length sequences
@@ -532,7 +531,7 @@ Incorporate review annotations into a final version. The coordinator (not the ag
 **Rules:**
 - If an annotation conflicts with the iteration's target dimension, prioritize the target dimension but log the conflict
 - If an annotation can't be addressed without damaging another dimension, defer it to a future iteration
-- Apply synonym substitutions only where the replacement preserves meaning and register — reject any that sound forced
+- When replacing avoided-vocabulary words, first try a word from the active lexicon's preferred vocabulary. If no preferred word fits the meaning, use a voice-appropriate alternative. Never replace a word that is the most precise term for its context unless it specifically violates the avoided list
 - Save the final revised version to `versions/v{N}.md`
 
 ---
@@ -564,12 +563,11 @@ Log the result. Check convergence signals. Decide what to do next.
 - Per-dimension scores before and after
 - KEEP/REVERT decision with reasoning
 - Reader Agent annotations (summarized): count, top issues flagged
-- Voice Auditor annotations (summarized): patterns detected, rhythm analysis
-- Synonym Agent substitutions: count applied, count rejected, count lexicon-sourced, examples of each
+- Voice Auditor annotations (summarized): patterns detected, rhythm analysis, avoided-vocabulary words flagged and how they were replaced
 - (Deep rewrite only) RESEARCH findings surfaced, user's approval/rejection, and how approved findings were incorporated
 
 **2. Log to `results.tsv`** (structured):
-Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}\t{reader_annotations}\t{voice_audit_count}\t{synonym_applied}\t{synonym_rejected}\t{synonym_lexicon_sourced}`
+Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}\t{reader_annotations}\t{voice_audit_count}`
 
 **3. Check Convergence Signals**
 
@@ -583,7 +581,7 @@ Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}
 | 6 | **All dimensions at 7+ AND <0.3 gain over 2 keeps** | Ceiling reached | Enter **Breakthrough Protocol** (see below) |
 | 7 | **Breakthrough iteration produced no gain** | Structural ceiling confirmed | Cycle to next breakthrough technique; if all 3 exhausted, accept plateau |
 | 8 | **Voice Auditor flags same pattern 3+ iterations after first detection** | Drafter can't eliminate this AI-tell | Try Constraint-Based Revision targeting that specific pattern; if still persistent, accept it |
-| 9 | **Voice Auditor annotation count not decreasing over 4+ iterations** | Drafter isn't learning to avoid AI patterns | Switch to aggressive synonym substitution and structural rethink focused on breaking sentence templates |
+| 9 | **Voice Auditor annotation count not decreasing over 4+ iterations** | Drafter isn't learning to avoid AI patterns | Invoke structural rethink focused on breaking sentence templates; manually rewrite the three most-flagged sentences from scratch rather than editing them |
 | 10 | **Reader Agent finds 0 engagement drops for 2 consecutive iterations** | Reader perspective exhausted | Skip Reader Agent for next iteration to save time; re-enable if score drops |
 
 These are advisory signals, not rigid rules. Use judgment. Log which signal triggered and the response chosen.
@@ -681,7 +679,7 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 - [Location]: Anti-pattern "[name]" violates register level [N]
 
 ### Avoided Vocabulary Detected
-- [Location]: "[word]" appears in lexicon's avoided vocabulary. Flag for Synonym Agent.
+- [Location]: "[word]" appears in lexicon's avoided vocabulary. Suggest replacement from preferred vocabulary: "[preferred candidate]" (if a fit exists) or note that the coordinator must choose a voice-appropriate alternative.
 
 ### Hedge Clustering
 - [Para N]: N hedges in M sentences: "[list]"
@@ -727,79 +725,34 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
 - Rhythm analysis is mandatory every audit (compute sentence length sequence against the active lexicon's rhythm profile)
 - Transition diversity check is mandatory every audit (check against the active lexicon's transition preferences)
 - Phrase pattern check is mandatory every audit: scan for opportunities to use lexicon phrase patterns in place of generic constructions. Flag at most 3 opportunities per audit — the goal is natural adoption, not forced insertion
-- Flag any word from the active lexicon's avoided vocabulary that the Synonym Agent may have missed. Cross-agent coverage ensures nothing slips through
-- Never suggest rewrites — only identify patterns (the coordinator rewrites during REVISE)
+- Avoided-vocabulary scan is mandatory every audit: flag every word in the draft that appears in the active lexicon's avoided vocabulary. For each flagged word, suggest a replacement from the preferred vocabulary when one fits. The coordinator handles replacement during REVISE
+- Never suggest full sentence rewrites — only identify patterns and propose single-word replacements for avoided vocabulary (the coordinator rewrites during REVISE)
 
 ---
 
-### Synonym Agent
+### Word-Choice Guidance for REVISE
 
-**Purpose**: Suggest word substitutions that break the statistical signature of AI-generated text while staying within the vocabulary of a specific publication's voice. AI detection tools measure how consistently text selects the most probable word at each position. The Synonym Agent shifts word choices away from the AI-default *toward* the active lexicon's preferred vocabulary, producing text that is both statistically varied (defeating detectors) and naturally consistent (sounding like a real writer at a real publication).
+The coordinator handles word-level substitution directly during REVISE, guided by the Voice Auditor's annotations and the active lexicon. There is no dedicated synonym agent — word choice is not a separate review pass, it is part of how the coordinator addresses Voice Auditor findings.
 
-**Input** (provided in agent prompt):
-- The full draft text
-- Voice register level (1-5)
-- The current iteration number
-- **The active lexicon** (preferred vocabulary, avoided vocabulary, and phrase patterns from the Lexicon System)
+**When to replace a word**:
+1. The Voice Auditor flagged it as avoided vocabulary — mandatory replacement
+2. The Voice Auditor flagged it as a kill-list word or AI-tell — mandatory replacement
+3. The word is generic ("shows," "demonstrates," "indicates," "utilizes") and the active lexicon has a more characteristic alternative — recommended
 
-**Output format** (structured substitution list):
-```
-## Synonym Substitutions
+**How to pick the replacement**:
+1. **First choice**: a word from the active lexicon's preferred vocabulary that preserves the meaning
+2. **Second choice**: a voice-appropriate word that is not in the preferred list but fits the publication's register
+3. **Never**: a word that changes the meaning, shifts the connotation, or sounds forced when the full sentence is read aloud
 
-### Proposed Replacements
-- [Para N, sentence M]: "[original word]" → "[suggested synonym]"
-  Lexicon match: yes (in preferred vocabulary) / no (not in lexicon, but fits voice)
-  Why it fits: [brief explanation — e.g., "Economist lexicon prefers 'reckons' over 'believes'; matches the publication's informal analytical tone"]
-  Register-appropriate: yes/no.
+**What never to replace**:
+- Proper nouns, technical terms, quoted material
+- Words that are already precise, distinctive, or domain-specific ("cleared," "reported," "declined" where the verb carries specific meaning)
+- Nouns (too much domain precision; changing "checks" to "tests" shifts meaning)
+- Words that are already unusual — they are humanizing, not problematic
 
-### Lexicon Rejections
-- [Para N]: "[original word]" → ~~"[rejected synonym]"~~ — rejected: word appears in lexicon's avoided vocabulary
-- [Para N]: "[original word]" → ~~"[rejected synonym]"~~ — rejected: word does not fit the publication's voice despite being a valid synonym
+**Density target**: most paragraphs need zero word-level changes. Replace only what the Voice Auditor flags plus the occasional generic verb the lexicon would improve. If the draft already uses diverse vocabulary, leave it alone.
 
-### Words Considered but Retained
-- [Para N]: "[word]" — no lexicon-appropriate synonym exists without changing meaning
-
-### Substitution Density
-- Total proposed: N substitutions across M paragraphs
-- Lexicon-sourced: N of M proposed (percentage from preferred vocabulary)
-- Target density: maximum 1 substitution per 2 sentences, no more than 2 per paragraph
-```
-
-**How it works**:
-
-1. **Scan each paragraph** for words where the chosen word feels like the "default" or most obvious choice — the word any AI or average writer would reach for first. Also flag any word that appears in the active lexicon's avoided vocabulary — these must be replaced regardless of how natural they seem.
-2. **For each candidate word**, apply four checks in strict order. All four must pass before proposing a substitution:
-   - **LEXICON REJECT CHECK (must pass first)**: Does the original word appear in the active lexicon's avoided vocabulary? If yes, it must be replaced — proceed to find a substitute from the preferred vocabulary or a voice-appropriate alternative. Skip the precision check for avoided words (the lexicon overrides precision for words that betray the wrong voice).
-   - **PRECISION CHECK**: Is the original word the most precise word for this concept in this specific context? If yes, do not substitute it regardless of how predictable it is. A precise word is never wrong just because it's predictable. Exception: words on the lexicon's avoided list are replaced even if precise (see above).
-   - **CONNOTATION CHECK**: Does the proposed synonym carry the same implied meaning, or just the same dictionary definition? Dictionary synonyms share denotation but often differ in connotation. "Declined" and "receded" share a denotation (went down) but "receded" implies spatial/tidal movement. If the connotation shifts, reject the substitution.
-   - **LEXICON-FIT CHECK (replaces unpredictability check)**: Does the proposed synonym appear in the active lexicon's preferred vocabulary? If yes, propose it — it matches the target publication's voice and is inherently unpredictable for an AI. If the synonym is not in the preferred vocabulary, apply the original unpredictability test: is it less predictable than the original while still fitting the publication's voice? The naturalness test changes from "would a journalist write this?" to "would a journalist *at this specific publication* write this?"
-3. **Eligible word types**:
-   - Adjectives and adverbs: eligible (highest substitution flexibility, lowest precision risk)
-   - Verbs: eligible only if the verb is generic ("shows," "demonstrates," "indicates," "utilizes"). Domain-specific or precise verbs ("cleared," "reported," "declined") should not be substituted
-   - Nouns: do not substitute. Nouns carry too much domain-specific precision. Changing "checks" to "tests" or "rate" to "figure" shifts meaning in ways the agent cannot reliably detect
-4. **Target density**: 1 substitution per 2 sentences, maximum 2 per paragraph. **Maximum 5 substitutions total per review.** Fewer, better.
-
-**Lexicon-driven synonym selection** (replaces generic register matching):
-
-The active lexicon's preferred and avoided vocabulary take priority over generic register rules. When the lexicon provides a clear preferred synonym, use it. When no lexicon word fits, fall back to the register-level guidance below.
-
-| Register | Lexicon | Synonym direction | Example |
-|----------|---------|-------------------|---------|
-| 1 | Institutional | Draw from: "reported," "recorded," "observed," "remained." Reject: "dramatic," "alarming," "exciting." | "increased" → "rose," "important" → "material" |
-| 2 | Economist | Draw from: "reckons," "scant," "buoyed," "dented." Reject: "utilize," "stakeholder," "synergy." | "significant" → "hefty," "shows" → "reflects," "decreased" → "crimped" |
-| 3 | NYT | Draw from: "underscored," "signaled," "complicated," "strained." Reject: "stakeholder," "leverage," "paradigm shift." | "showed" → "illustrated," "caused" → "fueled," "changed" → "marked a shift" |
-| 4 | FiveThirtyEight | Draw from: "turns out," "roughly," "tends to," "the catch." Reject: "utilize," "moreover," "thus." | "demonstrates" → "shows," "approximately" → "roughly," "significant" → "pretty big" |
-| 5 | Op-Ed | Draw from: "bluntly," "nonsense," "overdue," "deserves better." Reject: "facilitate," "holistic," "it should be noted." | "incorrect" → "wrong," "important" → "overdue," "argues" → "insists" |
-
-**Behavioral rules**:
-- Fewer is better. The goal is subtle statistical disruption, not a vocabulary overhaul. If a paragraph reads naturally, propose zero substitutions for it
-- Never substitute proper nouns, technical terms, or quoted material
-- Never substitute words that are already unusual or distinctive; these are humanizing
-- Each substitution must include reasoning for why the original word is the "default" choice
-- After proposing a substitution, read the full sentence with the synonym in place. If the sentence sounds awkward, forced, or unnatural when read aloud, reject the substitution. The test: would a journalist *at the publication matching the active lexicon* write this sentence? If not, the synonym fails regardless of register match
-- If the draft already uses diverse vocabulary, propose fewer substitutions (the text doesn't need help)
-- The coordinator makes the final accept/reject decision during REVISE; the Synonym Agent only proposes
-- If in doubt, do not substitute. An unchanged predictable word is always better than an imprecise unpredictable one
+**The sentence-aloud test**: after any replacement, read the full sentence aloud. If it sounds awkward, forced, or unnatural, revert. The test: would a journalist *at the publication matching the active lexicon* write this sentence? If not, keep the original.
 
 ---
 
@@ -808,14 +761,12 @@ The active lexicon's preferred and avoided vocabulary take priority over generic
 **Annotation decay**:
 - Reader Agent annotations should decrease over iterations as the artifact improves. If they don't decrease after 4 iterations, flag as convergence signal #10.
 - Voice Auditor annotations should decrease over iterations. If they don't, flag as convergence signal #9.
-- If the Voice Auditor returns 0 AI-tell findings for 2 consecutive iterations, skip it for the next iteration to save time. Re-enable if any dimension score drops.
+- If the Voice Auditor returns 0 AI-tell findings and 0 avoided-vocabulary flags for 2 consecutive iterations, skip it for the next iteration to save time. Re-enable if any dimension score drops.
 - If the Reader Agent finds 0 engagement drops for 2 consecutive iterations, skip it for the next iteration. Re-enable if score drops.
-- The Synonym Agent always runs (its purpose is statistical, not quality-based — even good text benefits from probability-shifting).
 
 **Cross-agent conflicts**:
-- If Reader Agent flags a passage as confusing AND Synonym Agent proposes a substitution in the same passage: apply the Reader fix first, then re-evaluate whether the synonym still fits.
+- If Reader Agent flags a passage as confusing AND Voice Auditor flags the same passage for an AI-tell or avoided vocabulary: apply the Reader fix first (rewriting the sentence usually resolves both).
 - If Voice Auditor flags a transition AND Reader Agent flags the same passage for pacing: address both — these are complementary, not conflicting.
-- If Synonym Agent proposes a substitution that the Voice Auditor would flag as an AI-tell word: reject the substitution.
 
 ---
 
@@ -823,7 +774,7 @@ The active lexicon's preferred and avoided vocabulary take priority over generic
 
 When Signal #6 fires (all dimensions at 7+ and gains have stalled below 0.3 for 2 consecutive keeps), the loop shifts from incremental improvement to structural experimentation. The protocol cycles through three techniques. Each feeds into the next.
 
-**Review agents during Breakthrough**: All three review agents (Reader, Voice Auditor, Synonym) still run during breakthrough iterations. The Red Team Reader technique replaces the Reader Agent for that iteration only (they serve the same function but the Red Team version is more adversarial). Voice Auditor and Synonym Agent run as normal.
+**Review agents during Breakthrough**: Both review agents (Reader, Voice Auditor) still run during breakthrough iterations. The Red Team Reader technique replaces the Reader Agent for that iteration only (they serve the same function but the Red Team version is more adversarial). The Voice Auditor runs as normal.
 
 ### Cycling Logic
 
@@ -846,7 +797,7 @@ Adopt the persona of a skeptical member of the target audience (from intake). An
 3. **What question does this leave unanswered?** The gap the piece doesn't address that the audience would notice
 4. **What one sentence would I share with a colleague?** The "so what" test -- if nothing is shareable, the piece lacks a clear payoff
 
-Red Team findings feed into the next THINK phase as **constraints**, not suggestions. The revision MUST address the drop-off point and the weakest claim. During this technique, the Red Team Reader **replaces** the Reader Agent in the REVIEW step (skip the standard Reader Agent to avoid redundant reader-perspective analysis). Voice Auditor and Synonym Agent still run in parallel with the Red Team Reader. Log findings to `log.md` with tag `[RED TEAM]`.
+Red Team findings feed into the next THINK phase as **constraints**, not suggestions. The revision MUST address the drop-off point and the weakest claim. During this technique, the Red Team Reader **replaces** the Reader Agent in the REVIEW step (skip the standard Reader Agent to avoid redundant reader-perspective analysis). The Voice Auditor still runs in parallel with the Red Team Reader. Log findings to `log.md` with tag `[RED TEAM]`.
 
 ---
 
@@ -858,7 +809,7 @@ Re-read the entire artifact as if seeing it for the first time. Discard iteratio
 2. **Narrative arc**: restructure around a tension-resolution or before-after frame. Tests whether the piece lacks forward momentum
 3. **Compression**: what if this were half the length? What survives the cut? Tests whether the piece is padded
 
-Pick the most promising alternative and execute it as a single DRAFT. Run the full REVIEW step (all three agents) on the structural rethink draft. **The Maximum Increment Rule is relaxed to +2 per dimension** for structural rethink iterations, because the artifact is fundamentally reorganized. However, unaddressed high-severity review annotations still cap dimensions per safeguard #8. Log with tag `[STRUCTURAL]`, including all 3 alternatives considered and the rationale for the choice.
+Pick the most promising alternative and execute it as a single DRAFT. Run the full REVIEW step (both agents) on the structural rethink draft. **The Maximum Increment Rule is relaxed to +2 per dimension** for structural rethink iterations, because the artifact is fundamentally reorganized. However, unaddressed high-severity review annotations still cap dimensions per safeguard #8. Log with tag `[STRUCTURAL]`, including all 3 alternatives considered and the rationale for the choice.
 
 ---
 
@@ -873,7 +824,7 @@ Apply one constraint from this menu. Rotate through them across iterations:
 | **Remove all hedging** | Delete every hedge word (may, might, could, somewhat, relatively, arguably). Then add back ONLY the hedges that are genuinely necessary. Most aren't |
 | **Kill your best paragraph** | Identify the paragraph you're most proud of. Delete it. Rebuild the piece around its absence. If the piece is better without it, it was a crutch |
 
-Run the full REVIEW step (all three agents) after applying the constraint, then REVISE and SCORE. If composite improved: keep. If not: revert, try the next constraint. Log with tag `[CONSTRAINT]`, including which constraint was applied and what was cut or changed.
+Run the full REVIEW step (both agents) after applying the constraint, then REVISE and SCORE. If composite improved: keep. If not: revert, try the next constraint. Log with tag `[CONSTRAINT]`, including which constraint was applied and what was cut or changed.
 
 ---
 
@@ -927,7 +878,7 @@ After scoring all dimensions, scan the artifact for editorial anti-patterns that
 After Reader Agent and Voice Auditor annotations are incorporated during REVISE, the scoring step must acknowledge which annotations were addressed and which were deferred. Scoring rules:
 - **Unaddressed high-severity Reader annotations** (engagement drops, comprehension failures): the relevant dimension cannot increase this iteration. No improvement credit for known reader problems that remain.
 - **Unaddressed AI-tell patterns** (Voice Auditor): if 3+ AI-tell patterns from the current audit remain unaddressed, Register Discipline cannot score above its current value.
-- **Synonym substitution rate**: log how many substitutions were applied vs. proposed. If fewer than 50% of proposed substitutions were applied, note the reasoning (acceptable — the coordinator may have good reasons to reject).
+- **Avoided vocabulary**: if the Voice Auditor flagged avoided-vocabulary words and any remain unreplaced at the end of REVISE, Voice & Register (or the equivalent voice dimension) cannot increase this iteration.
 - **Transition diversity**: if the Voice Auditor flagged transition monotony and it remains unaddressed, Structure cannot increase this iteration.
 
 ### Composite Score
@@ -941,7 +892,7 @@ Time allocation: ~10% of total budget. Runs in a loop after the iteration loop e
 
 **Purpose**: A final-pass review by an agent with **zero context**. This agent has never seen the rubric, the iteration log, or any prior version. It receives only the final artifact text. Its job is to read the document cold, as a complete stranger would, and flag anything that does not make sense.
 
-Iterative review agents (Reader, Voice Auditor, Synonym) develop blind spots because they have watched the text evolve. They unconsciously fill gaps from memory. The Clean Slate Agent catches what they cannot.
+Iterative review agents (Reader, Voice Auditor) develop blind spots because they have watched the text evolve. They unconsciously fill gaps from memory. The Clean Slate Agent catches what they cannot.
 
 **Input** (provided in agent prompt):
 - The final artifact text. Nothing else. No rubric, no log, no scores, no iteration history, no audience description.
@@ -1019,9 +970,8 @@ Identify which question patterns produced the biggest score deltas.
 
 **Review agent patterns** (always extract):
 - **Reader Agent**: Which engagement drops recurred across iterations? What audience assumptions kept failing? Which paragraph positions were most prone to attention loss?
-- **Voice Auditor**: Which AI-tell patterns were hardest to eliminate? Which techniques successfully removed them? What transition strategies worked best for the target register? Did rhythm monotony persist despite targeted fixes?
-- **Synonym Agent**: What was the average acceptance rate for proposed substitutions? Which word categories (adjectives, verbs, adverbs) had the highest acceptance rate? Were there register-specific patterns in which synonyms worked?
-- **Lexicon effectiveness**: Which lexicon was active? What percentage of accepted synonyms came from the lexicon's preferred vocabulary? Which preferred words were never used (candidates for removal)? Which non-lexicon words were repeatedly accepted (candidates for addition)? Were any avoided-vocabulary words hard to replace (suggesting the avoided list is too aggressive)?
+- **Voice Auditor**: Which AI-tell patterns were hardest to eliminate? Which techniques successfully removed them? What transition strategies worked best for the target register? Did rhythm monotony persist despite targeted fixes? Which avoided-vocabulary words recurred, and what replacements worked best?
+- **Lexicon effectiveness**: Which lexicon was active? Which preferred words were reached for most often during REVISE? Which preferred words were never used (candidates for removal)? Which non-lexicon words were repeatedly chosen as replacements (candidates for addition to the preferred list)? Were any avoided-vocabulary words hard to replace cleanly (suggesting the avoided list is too aggressive for this domain)?
 
 ### Step 3: Generate the Skill File
 Write to `runs/<id>/skill.md`:
@@ -1045,17 +995,15 @@ Write to `runs/<id>/skill.md`:
 ## Humanization Techniques
 [Patterns that successfully reduced AI detectability, organized by category:]
 ### Lexicon Refinements
-[Active lexicon: [name]. Effectiveness: [X]% of accepted synonyms were lexicon-sourced.]
+[Active lexicon: [name]. Summary of how much of the final text's distinctive word choice traces to the lexicon.]
 #### Words to Add to Preferred Vocabulary
-[Non-lexicon words that were repeatedly accepted — these fit the voice and should be added]
+[Words that were repeatedly reached for during REVISE even though they weren't in the lexicon — these fit the voice and should be added]
 #### Words to Remove from Preferred Vocabulary
-[Lexicon words that were never used or consistently rejected — not useful for this domain]
+[Lexicon words that were never used — not useful for this domain]
 #### Words to Add to Avoided Vocabulary
-[Words that the Voice Auditor or Synonym Agent repeatedly flagged — should be hard-rejected]
+[Words that the Voice Auditor repeatedly flagged or that kept creeping back into drafts — should be hard-rejected]
 #### Phrase Patterns That Emerged
 [New phrase constructions that appeared naturally during revision and fit the lexicon's voice]
-### Synonym Substitution Patterns
-[Which word replacements worked best? How many were lexicon-sourced vs. ad-hoc?]
 ### Transition Diversity
 [Which transition strategies produced the most natural paragraph flow? Did lexicon preferences hold?]
 ### Rhythm Breaking

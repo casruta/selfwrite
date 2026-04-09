@@ -60,7 +60,7 @@ argument-hint: '"task description" <duration>' (e.g., "write a cold email" 30m)
 - During intake, user names a publication or journalist as a voice model
 - Maps to a built-in lexicon (Economist, Reuters, NYT, FiveThirtyEight, Op-Ed, Institutional) or infers from register level
 - Lexicon provides: preferred vocabulary, avoided vocabulary, phrase patterns, sentence rhythm profile, transition preferences
-- Flows into Synonym Agent (word source + reject list), Voice Auditor (rhythm/transition/phrase targets)
+- Flows into Voice Auditor (rhythm/transition/phrase targets, avoided-vocabulary flagging) and the coordinator's REVISE phase (preferred vocabulary as replacement pool)
 - Distillation captures lexicon refinements for future runs
 
 ### Phase 1: Rubric Generation

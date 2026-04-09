@@ -99,7 +99,7 @@ Each step targets the weakest dimension:
 
 - **THINK**: Identify the lowest-scoring dimension, adopt an expert persona, ask 2-3 questions that reference specific content, form a testable hypothesis
 - **DRAFT**: Apply focused changes to test the hypothesis (not a wholesale rewrite)
-- **REVIEW**: Three separate agents evaluate the draft in parallel (see [Review Agents](#review-agents))
+- **REVIEW**: Two separate agents evaluate the draft in parallel (see [Review Agents](#review-agents))
 - **REVISE**: Fold in agent annotations, triaging by severity
 - **SCORE**: Adversarial scoring with 8 safeguards (see [Scoring](#scoring))
 - **REFLECT**: Log the result, check for convergence or plateau, adjust strategy
@@ -112,28 +112,29 @@ After the loop exits, a **Clean Slate Review** runs. A separate agent with zero 
 
 ## Review Agents
 
-Four agents review the text across two phases:
+Three agents review the text across two phases:
 
 | Agent | Phase | What it catches |
 |-------|-------|----------------|
 | **Reader Agent** | Every iteration | Engagement drops, comprehension failures, too many technical terms in one sentence, references that force the reader to scroll back |
-| **Voice Auditor** | Every iteration | AI-tell patterns, sentence template repetition, rhythm monotony, overuse of the same transition words, formality-level drift from the target register |
-| **Synonym Agent** | Every iteration | Predictable word choices that AI detection tools flag; suggests less-predictable substitutions (max 2 per paragraph, max 8 per review) |
+| **Voice Auditor** | Every iteration | AI-tell patterns, sentence template repetition, rhythm monotony, overuse of the same transition words, formality-level drift from the target register, words that appear in the active lexicon's avoided vocabulary |
 | **Clean Slate Agent** | Once, after loop | Reads final text with zero context; flags anything unclear, unsupported, contradictory, or confusing to a first-time reader |
 
-The three per-cycle agents launch fresh each cycle with no memory of prior runs, so blind spots don't accumulate. Short budgets trigger automatic scaling: under 15 minutes, only Voice Auditor and Synonym Agent run; under 10, only Synonym Agent. The Clean Slate Agent always runs.
+The per-cycle agents launch fresh each cycle with no memory of prior runs, so blind spots don't accumulate. Short budgets trigger automatic scaling: under 15 minutes, only the Voice Auditor runs; under 10, neither per-cycle agent runs and the coordinator does its own pass. The Clean Slate Agent always runs.
+
+Word choice is not a separate review pass. The coordinator handles word-level substitution directly during REVISE, guided by the Voice Auditor's avoided-vocabulary flags and the active lexicon's preferred vocabulary.
 
 ## Lexicon System
 
-A lexicon is a curated vocabulary and phrasing profile tied to a specific publication. It solves the problem of synonym substitutions that don't fit the target voice: instead of picking "less predictable" words at random, the Synonym Agent draws from a publication's actual vocabulary.
+A lexicon is a curated vocabulary and phrasing profile tied to a specific publication. It solves the problem of word choices that don't fit the target voice: instead of picking "less predictable" words at random, the coordinator reaches for words from a publication's actual vocabulary during REVISE.
 
 **Built-in lexicons**: The Economist, Reuters, NYT News Analysis, FiveThirtyEight/Vox, Op-Ed/Newsletter, Institutional/Statistical Report.
 
 Each lexicon defines: preferred vocabulary, avoided vocabulary, phrase patterns, sentence rhythm profile, and transition preferences. During intake, name a publication to load its lexicon, or let selfwrite pick one based on your register level.
 
-The lexicon also addresses AI detectability without sacrificing naturalness. AI detectors flag text that always picks the most probable word. Random synonym swaps break that pattern but can sound forced. A lexicon shifts word choices toward a specific human voice, so the output is both statistically varied (defeating detectors) and naturally consistent (sounding like a real publication).
+The lexicon addresses AI detectability without sacrificing naturalness. AI detectors flag text that always picks the most probable word. Random word swaps break that pattern but can sound forced. A lexicon shifts word choices toward a specific human voice, so the output is both statistically varied (defeating detectors) and naturally consistent (sounding like a real publication).
 
-Over multiple runs, the distillation phase refines the lexicon: tracking which preferred words were used, which were rejected, and which new words emerged naturally. Install the distilled skill file to carry these refinements forward.
+Over multiple runs, the distillation phase refines the lexicon: tracking which preferred words were reached for, which were never used, and which new words emerged naturally during REVISE. Install the distilled skill file to carry these refinements forward.
 
 ## Scoring
 
