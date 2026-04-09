@@ -14,7 +14,7 @@ The skill is supposed to supplement dense, data-heavy text whilst utilizing poin
 ## How to install it 
 
 ```bash
-cp selfwrite.md ~/.claude/skills/selfwrite.md
+mkdir -p ~/.claude/skills && cp selfwrite.md ~/.claude/skills/selfwrite.md
 ```
 
 Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). No other dependencies.
@@ -72,12 +72,12 @@ Selfwrite opens with an intake: questions about your audience, purpose, genre, a
   └────┬────┘                                             │
        │                                                  │
        ▼                                                  │
-  ┌──────────┐  ┌──────────┐  ┌──────────┐                │
-  │  READER  │  │  VOICE   │  │ SYNONYM  │  (parallel)    │
-  │  AGENT   │  │ AUDITOR  │  │  AGENT   │                │
-  └────┬─────┘  └────┬─────┘  └────┬─────┘                │
-       │             │             │                      │
-       ▼             ▼             ▼                      │
+  ┌──────────┐  ┌──────────┐                              │
+  │  READER  │  │  VOICE   │  (parallel)                  │
+  │  AGENT   │  │ AUDITOR  │                              │
+  └────┬─────┘  └────┬─────┘                              │
+       │             │                                    │
+       ▼             ▼                                    │
   ┌──────────────────────────────────────┐                │
   │  REVISE  │  Incorporate annotations  │                │
   └────┬─────────────────────────────────┘                │

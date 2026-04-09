@@ -1,5 +1,12 @@
 # Plan: Selfwrite — Autonomous Self-Improving Skill Loop
 
+> **Status**: Original design document. The tool has shipped with significant changes since this
+> was written: the Synonym Agent was folded into REVISE, a query-decomposition research tree with
+> a Dependency Verifier subagent was added to deep-rewrite mode, a lexicon system was added, and
+> a Prompt Decomposition intake phase (Phase 0.75) was added, grounded in IBM's agentic AI
+> Plan → Act → Observe → Adjust loop. See `selfwrite.md` for the current implementation and
+> `README.md` for user-facing docs.
+
 ## Context
 
 The user wants a Claude Code skill that turns Claude into a self-improving loop: given any task and a time budget, Claude autonomously iterates on the output, scores itself, asks expert-level probing questions to push quality higher, then distills what it learned into a reusable skill file. This generalizes the existing Continuous Improvement Protocol (which only covers data analysis and writing) to any domain.

@@ -94,7 +94,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    | Genre = data analysis | Lead with finding, not narrative. Data speaks first. Charts introduced by what they show, not by dramatic framing. No hooks or kickers |
    | Genre = news report | Inverted pyramid: most important finding first. Attribution to sources. Third-person. No editorial commentary |
    | Voice model = named publication | Load matching lexicon (see Lexicon System). Voice Auditor uses lexicon phrase patterns, rhythm profile, and transition preferences as targets, and flags any word appearing in the lexicon's avoided vocabulary. The coordinator applies lexicon-aware word choices during REVISE. |
-   | Voice model = skipped | Default lexicon selected from register level (Register 1 → Institutional, Register 2 → Economist, Register 3 → NYT, Register 4 → FiveThirtyEight, Register 5 → Op-Ed) |
+   | Voice model = skipped | Default lexicon selected from register level (Register 1 → Institutional/Statistical Report, Register 2 → Economist, Register 3 → NYT News Analysis, Register 4 → FiveThirtyEight/Vox, Register 5 → Op-Ed/Newsletter) |
 
    **Follow-up questions** (ask based on initial answers):
    - If audience = experts: "What's the one thing they don't already know?" (This is your lede)
@@ -230,7 +230,7 @@ Each lexicon defines five components:
 | **Sentence rhythm** | 8-20 words typical. Conversational pacing: short (5-8), medium (12-16), short (5-8). Rarely exceeds 22. Questions used as transitions. |
 | **Transition preferences** | Question-as-bridge ("So what does that mean?"), direct pivots ("But," "And," "So"), restatement ("In other words,"), the-catch ("The problem is,"). Avoids formal connectives ("Moreover," "Furthermore"). |
 
-#### Op-Ed / Newsletter (Register 5)
+#### Op-Ed/Newsletter (Register 5)
 
 | Component | Content |
 |-----------|---------|
@@ -240,7 +240,7 @@ Each lexicon defines five components:
 | **Sentence rhythm** | 5-18 words typical. Punchy and staccato. Sentence fragments for emphasis. One-word paragraphs allowed. Rhythm drives argument, not just clarity. |
 | **Transition preferences** | Direct address ("Look,"), rhetorical questions, dramatic pivots ("But here's what nobody's saying:"), blunt conjunctions ("And," "But," "So"). |
 
-#### Institutional / Statistical Report (Register 1)
+#### Institutional/Statistical Report (Register 1)
 
 | Component | Content |
 |-----------|---------|
@@ -260,7 +260,7 @@ During intake, the lexicon is selected in one of three ways:
    - Register 2 → The Economist
    - Register 3 → NYT News Analysis
    - Register 4 → FiveThirtyEight / Vox
-   - Register 5 → Op-Ed / Newsletter
+   - Register 5 → Op-Ed/Newsletter
 3. **No preference**: Default to NYT News Analysis (Register 3) — the same default as the register system
 
 If a user names a publication not in the built-in list, approximate: identify the closest register level and built-in lexicon, then note in the log that the lexicon is an approximation. The Voice Auditor should treat the lexicon as a guide, not a straitjacket, when approximating.
