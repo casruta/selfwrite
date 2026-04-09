@@ -4,11 +4,9 @@
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-blue)
 
-A Claude Code skill that polishes up the writing making it indistunguishable from human-written content by applying various linguistic, structural, and grammatical principles (and no, this segment was not written by this product). 
+A Claude Code skill that runs a time-boxed self-improvement loop on any writing task. It iterates through a multi-agent cycle (THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT), optionally builds a bounded research tree to fill substantive gaps, and distills what it learned into a reusable skill file. Output reads as human-written — not through random synonym swaps, but because a lexicon system steers word choice toward a specific publication's actual voice.
 
-The skill is supposed to supplement dense, data-heavy text whilst utilizing point-first paragraph structure to optimize for maximum context and explanatory value while inserting minor fluff here and there to bamboozle the AI text detectors. 
-
-#### note: AI-text detectors are evolving daily. At times, entire paragraphs get flagged as AI-generated due to a phrase thats currently over-used by various text models. Finding 2-3 fitting synonyms is generally enough to confuse the AI-detection tool. 
+Works for prose, reports, memos, skill files, code, data analysis, and strategy documents. The lexicon system is the single biggest lever against AI-text detectors: it shifts word choices toward a real publication's vocabulary instead of toward the statistically most-probable word, so the output is both varied enough to defeat detectors and consistent enough to read naturally.
 
 
 ## How to install it 
@@ -20,6 +18,8 @@ mkdir -p ~/.claude/skills && cp selfwrite.md ~/.claude/skills/selfwrite.md
 Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). No other dependencies.
 
 Verify by running `/selfwrite` in any project.
+
+**Tools the skill uses**: `Read`, `Write`, `Edit`, `Bash`, `Glob`, `Grep`, `Agent` (for the Reader Agent, Voice Auditor, Dependency Verifier, and Clean Slate subagents), `WebSearch` + `WebFetch` (deep-rewrite mode only, for the research tree).
 
 ### Pre-approve the tools the skill uses (optional but recommended)
 
@@ -85,6 +85,8 @@ Duration uses `Nm` or `Nh` format. Minimum 10 minutes.
 | Quick edits (tighten a column, polish a README) | 15-30m |
 | Full rewrites (reports, memos, skill files) | 45m-2h |
 | Deep research rewrites (add evidence, counterarguments) | 1-6h |
+
+> **Cost note**: selfwrite is deliberately token-heavy — subagents, research trees, and kept versions are what make it improve. A 15m run is low-cost; a 6h deep rewrite is substantial. See the **Cost Awareness** section in `selfwrite.md` for per-budget iteration/subagent bands and the early-exit rule.
 
 ## Modes
 
@@ -206,12 +208,14 @@ If a revision improves the composite score, it's kept. If it damages two or more
 Each run creates a `selfwrite/runs/<run-id>/` directory:
 
 ```
-versions/       # v0.md, v1.md, ... (every snapshot)
-rubric.md       # scoring dimensions (locked after generation)
-log.md          # narrative journal of each iteration
-results.tsv     # structured scores per iteration
-skill.md        # distilled skill file
-summary.md      # final metrics and learnings
+versions/              # v0.md, v1.md, ... (every snapshot kept)
+decomposition.md       # Prompt Decomposition chain + per-step outputs (skipped if budget <15m)
+research/findings.md   # research tree log with delta trails (deep rewrite only)
+rubric.md              # scoring dimensions (locked after generation)
+log.md                 # narrative journal of each iteration
+results.tsv            # structured scores per iteration
+skill.md               # distilled skill file
+summary.md             # final metrics and learnings
 ```
 
 The **distilled skill file** is the lasting output. It records which questions, revision patterns, and writing techniques drove the largest score gains. Install it to carry those patterns into future runs:
@@ -230,10 +234,13 @@ cp selfwrite/runs/<run-id>/skill.md ~/.claude/skills/<domain>.md
 
 ## Example Runs
 
-| Run | Iterations | Start | Final | Delta |
-|-----|-----------|-------|-------|-------|
-| [`nyt-upgrade/`](runs/nyt-upgrade/) | 12 | 4.95 | 8.15 | +3.20 |
-| [`skill-upgrade/`](runs/skill-upgrade/) | 14 | 4.75 | 8.45 | +3.70 |
+| Run | Mode | Iterations | Start | Final | Delta |
+|-----|------|-----------|-------|-------|-------|
+| [`2026-04-01_011613/`](runs/2026-04-01_011613/) *(current format)* | Deep, Op-Ed/Newsletter lexicon | 5 | 5.25 | 8.00 | +2.75 |
+| [`skill-upgrade/`](runs/skill-upgrade/) *(historical layout)* | Simple | 14 | 4.75 | 8.45 | +3.70 |
+| [`nyt-upgrade/`](runs/nyt-upgrade/) *(historical layout)* | Simple | 12 | 4.95 | 8.15 | +3.20 |
+
+See [`runs/README.md`](runs/README.md) for notes on the three different directory layouts — `2026-04-01_011613/` is the format a fresh run produces today.
 
 ## Requirements
 
