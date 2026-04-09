@@ -35,6 +35,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    selfwrite/runs/<run-id>/
      versions/          # v0.md, v1.md, ... (artifact snapshots)
      research/          # gathered sources, data, counterarguments (deep rewrite only)
+     decomposition.md   # prompt decomposition chain and per-step outputs (if budget ≥ 15m)
      rubric.md          # scoring rubric (generated once, locked)
      log.md             # research journal (narrative log of each iteration)
      results.tsv        # structured data (iteration, scores, keep/revert, delta)
@@ -47,9 +48,10 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - "pipeline", "workflow", "config" → config artifact (appropriate extension)
    - Default → prose artifact (.md)
 5. Calculate phase boundaries:
-   - Default: 50% iteration loop / 10% clean slate review / 30% distill / 10% summarize
-   - Short budget (<15m): 60% / 10% / 20% / 10%
-   - Long budget (>60m): 45% / 10% / 35% / 10%
+   - Default: 5% prompt decomposition / 50% iteration loop / 10% clean slate review / 25% distill / 10% summarize
+   - Short budget (<15m): 0% (decomposition skipped) / 60% / 10% / 20% / 10%
+   - Long budget (>60m): 8% / 45% / 10% / 27% / 10%
+   - **Hard cap on decomposition**: 10% of budget or 5 minutes, whichever is smaller. If the chain is still running when the cap hits, force-synthesize v0 from whatever sub-prompt outputs exist.
 
    **Review agent scaling for short budgets**: On budgets under 15 minutes, the two-agent REVIEW step consumes a larger fraction of each iteration. To ensure the minimum 3 iterations:
    - **Under 15m**: Run only the Voice Auditor (skip Reader Agent — the coordinator's own reading suffices for short pieces). Re-enable Reader Agent if any dimension drops below 5.
@@ -288,6 +290,142 @@ This creates a feedback loop: each run makes the lexicon more precise for the us
 
 ---
 
+## Prompt Decomposition (Agentic Intake Workflow)
+
+Grounded in IBM's agentic AI pattern (**Plan → Act → Observe → Adjust** with a final **Reflect** pass), this phase turns the user's raw request into a sequence of smaller sub-prompts executed sequentially. Each sub-prompt inherits context from the prior one. The chain's final output becomes the v0 baseline for the iteration loop. The point is to stop treating "write a 2000-word financial report" as a single inference and start treating it as a plan.
+
+### Why This Exists
+
+A one-shot generation compresses every reasoning step into one inference. Decomposition forces the model to reason explicitly about each sub-task, surface its assumptions, and let the user correct course before investing tokens in a full draft. It also makes the run auditable: you can see *why* v0 looks the way it does, not just what it says. This phase replaces the black-box "generate a draft" step with a transparent chain the user can edit mid-run and the tool can learn from across runs.
+
+### When It Runs
+
+- **Every run with budget ≥ 15m** (default behavior)
+- **Skipped under 15m** — decomposition overhead eats too much of a short budget; fall back to flat v0 generation
+- **Skipped if the task is a trivial simple-rewrite** of an existing draft under 500 words — nothing useful to plan
+
+### Step 1 — Plan: Classify the Inquiry
+
+Label the task as one of six types. The classification drives the sub-prompt template in Step 2 and may inform the rubric domain template at the next phase.
+
+| Type | Trigger signals | Example |
+|---|---|---|
+| **Analytical** | "analyze", "explain", "investigate", "compare", "evaluate" | "Analyze Alberta's Q4 budget surplus" |
+| **Creative** | "write", "draft", "compose", "op-ed", "essay", "column" | "Write an op-ed on housing policy" |
+| **Code** | "function", "script", "implement", "class", "API" | "Python function to merge overlapping intervals" |
+| **Research** | "find out", "what does X fund", "who", "when", "map the network" | "Map Thiel's donor network to GOP Senate candidates" |
+| **Compound** | two or more type signals present | "Analyze housing starts data and write an executive summary" |
+| **Ambiguous** | no clear signal or conflicting signals | "Help me with the thing about the budget" |
+
+If **Ambiguous**, ask exactly one clarifying question, then reclassify. Never proceed past this step without a committed classification.
+
+### Step 2 — Plan: Decompose into a Sub-Prompt Chain
+
+Each sub-prompt in the chain is a self-contained instruction with:
+- `inputs:` names of outputs from prior steps (empty list for the first step)
+- `output:` a short name that later steps can reference
+- `format:` expected shape (bullet list / paragraph / code block / table)
+
+**Templates by type:**
+
+| Type | Chain |
+|---|---|
+| **Analytical** | (1) Define scope and success criteria → (2) Gather evidence (numbers, named entities, primary sources) → (3) Identify patterns and contradictions → (4) State the thesis in one sentence → (5) Assemble into target format |
+| **Creative** | (1) Clarify the hook (what surprises the reader) → (2) Outline three possible structures → (3) Draft the lede → (4) Draft the body in order → (5) Draft the kicker → (6) Assemble and self-critique once |
+| **Code** | (1) Specify the interface (signature, I/O types, constraints) → (2) Enumerate edge cases (empty, null, oversized, concurrent) → (3) Sketch the algorithm in plain language → (4) Implement → (5) Write test cases covering each edge case |
+| **Research** | (1) List candidate sources by class (primary doc / peer-reviewed / government filing / news) → (2) Pull the minimum evidence from each → (3) Cross-reference and flag contradictions → (4) Synthesize into a cited summary |
+| **Compound** | Run the primary type's chain; append a final "reframe into secondary type's format" step |
+
+**Sub-prompt budget**: 3–6 steps total. Length scales with time budget:
+
+| Budget | Max steps |
+|---|---|
+| 15–30m | 3 |
+| 30–60m | 4–5 |
+| >60m | 5–6 |
+
+**Dependency check**: before executing, the coordinator walks the chain once and verifies every `inputs:` reference points to an earlier step's `output:`. If a step depends on a later step, reject the chain and re-decompose.
+
+### Step 3 — Plan: Present the Chain (Approval Gate)
+
+Show the user the chain exactly once:
+
+```
+Inquiry type: Analytical
+Chain (4 steps, est. 3-4 minutes):
+
+1. Define scope: What counts as "Alberta Q4"? Fiscal or calendar? Which
+   budget documents? → inputs: [] → output: scope → format: bullet list
+2. Gather evidence: pull Q4 figures from official release, opposition
+   response, two independent analyst reports
+   → inputs: [scope] → output: evidence → format: table
+3. Identify patterns: compare against Q3 and Q4 of prior 3 years, and other
+   provinces → inputs: [evidence] → output: patterns → format: bullet list
+4. Assemble: 800-word analytical report, thesis-first, data-backed
+   → inputs: [scope, evidence, patterns] → output: v0 → format: prose
+
+Approve, edit, or skip? (approve / edit step N / skip all)
+```
+
+User options:
+- **approve** — run the whole chain
+- **edit step N** — modify a single sub-prompt before execution (loop back to dependency check)
+- **skip all** — bypass decomposition, generate v0 in one shot
+
+Maximum 30-second interaction. On an unattended run with no response in 30 seconds, default to **approve**.
+
+### Step 4 — Act: Execute Sub-Prompts in Order
+
+Run each sub-prompt as its own reasoning turn. Between steps:
+
+- **Observe** — capture the step's full output to `decomposition.md`, tagged with its `output:` name so later steps can reference it by name
+- **Adjust** — if a step's output is empty, malformed, or contradicts a prior step, **pause and ask the user a single yes/no question** before proceeding. Do not retry silently — silent retries hide problems the user needs to see
+
+The chain is append-only. The coordinator never rewrites a prior step's output. If Step 3 needs to revise Step 1's scope, it must do so in its own output and note the revision explicitly.
+
+**Tool use within sub-prompts**: research-type steps may invoke web search during execution, but are subject to the same budget as the full run. If a research step would exceed the decomposition hard cap (10% of budget or 5 minutes), it is truncated and the remaining sub-prompts run on whatever was captured.
+
+### Step 5 — Reflect: Synthesize v0 and Log Learnings
+
+The final step in every chain is **"Synthesize the prior outputs into the target artifact."** This produces v0 and hands off to the Baseline scoring protocol.
+
+Immediately before scoring, write a one-paragraph **decomposition reflection** to `log.md`:
+- Which sub-prompt produced the most useful output?
+- Which sub-prompt had to be adjusted or re-prompted?
+- What did the decomposition surface that a one-shot prompt would have missed?
+- Was any sub-prompt redundant — i.e., could the chain have been shorter?
+
+This reflection feeds Distillation (Phase 4). Future runs on similar inquiry types can skip sub-prompts that never contributed useful output, shortening the chain without losing signal.
+
+### Handling Any User Inquiry
+
+This phase is designed to be robust across every inquiry the user might submit. The classification step handles the dispatch; the templates cover the common structure of each type; the Ambiguous path catches everything else by asking one targeted question rather than guessing. If a user inquiry doesn't fit any template cleanly, treat it as Compound and pick the two closest types — do not invent a new template mid-run. Unknown patterns are handled by adding a step to the existing chain, not by replacing the chain.
+
+### Relationship to the Research Tree
+
+Two different decomposition systems coexist in selfwrite. They solve different problems at different layers:
+
+| System | Runs | Decomposes | Shape | Lives in |
+|---|---|---|---|---|
+| **Prompt Decomposition** (this phase) | Once per run, at intake | The user's initial request | Linear chain | `decomposition.md` |
+| **Query Decomposition Tree** (RESEARCH phase) | Every iteration, deep-rewrite only | Research gaps within a running draft | Tree with 2-of-3 delta expansion | `research/findings.md` |
+
+Prompt Decomposition produces v0. Query Decomposition produces per-iteration research findings that feed REVISE. Never run one in place of the other.
+
+### Scaling Rules (precedence)
+
+Same precedence ordering as RESEARCH: **time budget > artifact type > classification**.
+
+| Condition | Behavior |
+|---|---|
+| Budget < 15m | Skip decomposition entirely; flat v0 generation |
+| Budget ≥ 15m, simple-rewrite mode, draft < 500 words | Skip (nothing to plan) |
+| Budget ≥ 15m, classification = Ambiguous | Ask one clarifying question, reclassify, then proceed |
+| Budget ≥ 15m, all other cases | Run full decomposition per the tables above |
+| Decomposition hard cap exceeded mid-chain | Force-synthesize v0 from whatever sub-prompt outputs exist; log the truncation |
+
+---
+
 ## Rubric Generation
 
 Generate 4-6 scoring dimensions specific to the task. Each dimension needs:
@@ -326,7 +464,7 @@ Save rubric to `rubric.md`.
 
 ## Baseline
 
-1. Produce the initial artifact (v0) — competent first draft, no over-investment
+1. Produce the initial artifact (v0) — competent first draft, no over-investment. If Prompt Decomposition ran, v0 is the output of that chain's final "Synthesize" step. If decomposition was skipped, generate v0 directly from the intake answers.
 2. Save to `versions/v0.md` (or appropriate extension)
 3. Score using the **Adversarial Scoring Protocol** (see below)
 4. **ANCHOR BASELINE AT 4-6** — hard rule. A first draft is not excellent. No dimension above 7.

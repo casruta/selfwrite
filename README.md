@@ -56,7 +56,11 @@ Selfwrite asks which mode you want at the start of each run.
 
 ## The Loop
 
-Selfwrite opens with an intake: questions about your audience, purpose, genre, and tone. Your answers shape a scoring rubric with 4-6 weighted dimensions (each scored 1-10). The baseline is anchored at 4-6 by design, so scores have room to climb. Then the loop begins:
+Selfwrite opens with an intake: questions about your audience, purpose, genre, and tone. Your answers shape a scoring rubric with 4-6 weighted dimensions (each scored 1-10). The baseline is anchored at 4-6 by design, so scores have room to climb.
+
+Before the first draft, selfwrite runs **Prompt Decomposition** — an agentic intake workflow modeled on IBM's Plan → Act → Observe → Adjust pattern. Your request is classified (analytical / creative / code / research / compound / ambiguous) and broken into a chain of 3-6 smaller sub-prompts that execute in order. Each sub-prompt inherits context from the prior one; the chain's final step synthesizes the outputs into v0, the baseline for the loop. You see the chain before it runs and can edit any step, or skip decomposition entirely. The goal is to replace the black-box "generate a draft" step with a transparent, editable plan that you can course-correct mid-run. Decomposition is skipped on budgets under 15 minutes. See `decomposition.md` in any run directory for the full chain and per-step outputs.
+
+Then the loop begins:
 
 ```
        ┌──────────────────────────────────────────────────┐
