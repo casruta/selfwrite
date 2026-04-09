@@ -74,6 +74,16 @@ argument-hint: '"task description" <duration>' (e.g., "write a cold email" 30m)
   - **Analysis**: analytical depth, evidence quality, framing, actionability
 - Saved to `rubric.md`
 
+### Phase 1.5: Query Decomposition (deep rewrite only)
+- Each iteration's RESEARCH step builds a decomposition tree instead of running a flat search
+- Gap Analysis identifies up to 3 gaps; each spawns three level-1 sub-questions (factual / adversarial / contextual)
+- Nodes expand only when the search result passes the 2-of-3 delta test: entity delta, quantitative delta, source-class delta. Max 2 children per node.
+- Default depth ceiling 4; depths 5–6 reachable only via a contradiction trigger at level 4
+- Dedup at expansion time via normalized-query hash (skip, don't re-search)
+- Hard budget: 15 searches per iteration; soft target 10
+- The Dependency Verifier subagent runs only on depth ≥ 4 nodes, labels each as surface-always / surface-if-draft-contains-X / log-only
+- Scaling precedence: time budget > decay rule > default depth (see RESEARCH scaling table in selfwrite.md)
+
 ### Phase 2: Baseline Production
 - Produce initial artifact (v0) — competent first draft, no over-investment
 - Score using the **Adversarial Scoring Protocol**:

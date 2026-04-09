@@ -55,7 +55,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - **Under 15m**: Run only the Voice Auditor (skip Reader Agent — the coordinator's own reading suffices for short pieces). Re-enable Reader Agent if any dimension drops below 5.
    - **Under 10m**: Skip both review agents. The coordinator does its own pass against the rubric and the active lexicon.
    - **15m and above**: Both agents run every iteration (default behavior).
-6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved\treader_annotations\tvoice_audit_count`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations.
+6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved\treader_annotations\tvoice_audit_count\ttree_depth\ttree_nodes\ttree_contradictions\ttree_gated_count`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations. The four `tree_*` columns track the RESEARCH decomposition tree (deep-rewrite only); they are 0 in simple-rewrite mode and when flat search was used (`tree_depth=0` is the sentinel for flat search).
 7. **Rewrite mode decision.** Ask the user:
    > "Do you want me to research and add context as I revise, or focus purely on improving what's already here?"
    > 1. **Deep rewrite** — I'll research context, counterarguments, and missing evidence alongside each revision. You approve what gets added.
@@ -453,37 +453,68 @@ The hypothesis must name: the change, the target dimension, the expected score d
 
 ### RESEARCH (deep rewrite only)
 
-**Skip this section entirely in simple-rewrite mode.** RESEARCH runs in parallel with THINK. While THINK diagnoses the weakest stylistic dimension, RESEARCH diagnoses substantive gaps.
+**Skip this section entirely in simple-rewrite mode.** RESEARCH runs in parallel with THINK. While THINK diagnoses the weakest stylistic dimension, RESEARCH diagnoses substantive gaps — and it does so by building a bounded decomposition tree rather than a single flat search. One search often raises the next question; the tree lets the loop follow that thread within a single iteration.
 
-**1. Gap Analysis** — Read the current artifact and identify:
+**1. Gap Analysis** — Read the current artifact and identify up to 3 gaps:
 - Claims that lack evidence or sourcing
 - Counterarguments the piece ignores or underweights
 - Context a knowledgeable reader would expect (historical, comparative, causal)
 - Numbers presented without framing (no base year, no per-capita, no comparison)
 
-**2. Gather** — Use available tools to fill gaps:
-- Web search for supporting data, contradicting data, and context
-- Read referenced documents or repos for additional detail
-- Check whether claims are current and accurate
-- Identify the strongest counterargument to the piece's central claim
-- Save gathered sources to `research/` directory
+**2. Query Decomposition** — Each gap spawns exactly three level-1 sub-questions. The trichotomy is hardcoded, not LLM-invented, so the tree shape is predictable:
+- **Factual** — what are the atomic components of the claim? (dollar amounts, dates, named entities, filing numbers)
+- **Adversarial** — what would a skeptic ask to disprove it? (counter-examples, contradicting sources, base rates)
+- **Contextual** — what must a reader understand to use the fact? (definitions, legal framework, comparative baselines)
 
-**3. Surface to User** — Present max 3 findings before DRAFT:
+Three gaps × three level-1 sub-questions = up to 9 searches at level 1. Bounded by the hard budget (§6 below).
+
+**3. Tree Expansion (the 2-of-3 delta test)** — Before spawning a child query beneath any node, check the node's search result against three deltas. Expand **only if ≥ 2 deltas pass**:
+
+| Delta | Passes if… |
+|---|---|
+| **Entity delta** | The result introduces a proper noun, statute, dataset, or specific claim absent from the draft, the gap description, and every ancestor node on this branch |
+| **Quantitative delta** | The result introduces a number that differs from any ancestor-node number by > 10%, or uses a different unit/denominator |
+| **Source-class delta** | The citation is from a source class (primary document, peer-reviewed, government filing, court record) not yet represented on this branch |
+
+Each child node logs the passing deltas inline, so every expansion decision is auditable. Maximum 2 children per node. This test is mechanically checkable and prevents the LLM from spawning sub-questions to justify its own existence.
+
+**Depth rules:**
+- **Default ceiling: depth 4.** Most real research bottoms out here.
+- **Depths 5–6 are gated**: a level-4 node may spawn a child only if it surfaces an explicit contradiction with the draft or with a level 1–3 finding. No contradiction → stop at depth 4.
+- **Dedup at expansion time**: before launching a child query, hash the normalized query (lowercased, stopwords stripped, entities sorted) against every prior query in this iteration's tree. On collision, mark the node `duplicate-of [tree path]` and issue no search. Dedup saves budget, not just presentation noise.
+
+**4. Dependency Verifier (subagent)** — Runs **only if the tree contains nodes at depth ≥ 4**. Skipped entirely otherwise. See the **Dependency Verifier** section under Review Agents for the full spec. The verifier labels each deep finding as `surface-always`, `surface-if-draft-contains-X`, or `log-only`. It reads cold (no iteration history) and returns a structured report. Its only job is the semantic dependency question — "does this deep finding matter to *this* draft?" — which deterministic rules cannot answer.
+
+**5. Surface to User** — The coordinator presents a synthesized bundle before DRAFT. Max 5 items per iteration (up from the old max 3 because tree findings are denser):
 > **Research findings (iteration N):**
-> 1. [Factual] The piece claims X, but Y source says Z. Include?
-> 2. [Adversarial] Strongest counterargument: ... Address it?
-> 3. [Contextual] Missing comparison to ... Add?
+> 1. [Factual, L1] The piece claims X, but Y source says Z. Include?
+> 2. [Adversarial, L2] Follow-up: the strongest counterargument bottoms out at [specific claim]. Address it?
+> 3. [Contextual, L3] Missing comparison to [specific baseline]. Add?
+> 4. [Surface-always, L4] Verifier flagged as load-bearing: [specific finding]. Include?
+> 5. [Contradiction, L2 vs L4] Source A says X, source B says Y. Resolve?
 >
 > **Which findings should I incorporate? (numbers, "all", or "none")**
 
-**4. Incorporate** — Approved findings feed into the DRAFT revision alongside THINK's stylistic hypothesis. Rejected findings are logged but not added.
+All level 1–3 findings that passed the 2-of-3 gate are eligible. Depth ≥ 4 findings surface only if the verifier labeled them `surface-always` or flagged a contradiction. `surface-if-draft-contains-X` findings are handed to the coordinator inline during DRAFT and resolved in the *same* iteration (never retroactively).
+
+**6. Incorporate** — Approved findings feed into the DRAFT revision alongside THINK's stylistic hypothesis. Rejected findings are logged but not added.
 
 **RESEARCH rules:**
 - Never add content without user approval. Zero autonomous additions.
-- Max 3 findings per iteration: one factual, one contextual, one adversarial. Don't overwhelm.
+- **Hard search budget: 15 per iteration.** Soft target: 10. The budget is per iteration, not per gap — a thread-heavy gap can spend more, a thin gap less.
 - Findings must be specific and cite-able. "Consider adding context" is not a finding.
-- **Decay**: Early iterations surface substantive gaps. Past score 7, narrow to fact-checking and counterargument stress-testing. Past 8.5, verification only.
-- Log all findings (approved and rejected) to `log.md` with the user's decision.
+- **Scaling precedence: time budget > decay rule > default depth.** Use this table:
+
+  | Condition | Tree behavior |
+  |---|---|
+  | Under 10m deep rewrite | Flat search only, max 2 searches total, no verifier |
+  | Under 15m deep rewrite | Decomposition capped at depth 2, no verifier (coordinator gates) |
+  | Composite > 8.5 | Flat search only, max 1 search per gap |
+  | Composite 7.0–8.5 | Decomposition capped at depth 3, verifier inactive (depth never reaches 4) |
+  | Composite < 7.0, budget ≥ 15m | Full tree, default depth 4, ceiling 6 via contradiction trigger |
+
+  Short budget always wins over decay, which always wins over the default.
+- Log the full tree to `research/findings.md` with the structure shown in REFLECT. Every expansion decision must be traceable through the inline delta logs.
 
 ---
 
@@ -497,7 +528,7 @@ Apply THINK insights to produce a candidate revision. In deep-rewrite mode, also
 - **Preserve what works**: Sections that scored well in prior iterations should not be modified unless the hypothesis specifically targets them.
 - **One hypothesis per draft**: Test one change at a time. If multiple changes are needed, pick the one with the highest expected impact and save the rest for the next iteration.
 
-The draft is a candidate, not the final version. It will be reviewed by three independent agents before finalization.
+The draft is a candidate, not the final version. It will be reviewed by two independent agents before finalization.
 
 ---
 
@@ -564,10 +595,46 @@ Log the result. Check convergence signals. Decide what to do next.
 - KEEP/REVERT decision with reasoning
 - Reader Agent annotations (summarized): count, top issues flagged
 - Voice Auditor annotations (summarized): patterns detected, rhythm analysis, avoided-vocabulary words flagged and how they were replaced
-- (Deep rewrite only) RESEARCH findings surfaced, user's approval/rejection, and how approved findings were incorporated
+- (Deep rewrite only) Research tree summary: max depth reached, total node count, any contradictions surfaced, Dependency Verifier invoked yes/no, findings surfaced vs. gated, user's approval/rejection of each surfaced finding, and how approved findings were incorporated
 
 **2. Log to `results.tsv`** (structured):
-Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}\t{reader_annotations}\t{voice_audit_count}`
+Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}\t{reader_annotations}\t{voice_audit_count}\t{tree_depth}\t{tree_nodes}\t{tree_contradictions}\t{tree_gated_count}`
+
+**2a. Log the research tree** (deep rewrite only):
+Append to `research/findings.md`:
+```
+## Iteration N — Research Tree
+
+### Gap 1: [description]
+
+#### L1 Factual: [query]
+  Source: [url]
+  Finding: [claim]
+  Expansion deltas passed: [entity, source-class, ...] → [spawn L2 | STOP: fails 2-of-3]
+
+  ##### L2: [query]
+    Source: [url]
+    Finding: [claim]
+    Expansion deltas passed: [...] → [spawn L3 | STOP]
+
+    (continue nesting up to depth 4, or depth 6 if a contradiction gated the expansion)
+
+#### L1 Adversarial: [query]
+  ...
+
+#### L1 Contextual: [query]
+  ...
+
+### Dependency Verifier Report
+[full verifier output, or "skipped: tree did not reach depth 4"]
+
+### Surfaced to User
+[the subset actually presented, with bucket labels]
+
+### User Decision
+[approved / rejected per finding]
+```
+Every expansion must be traceable through the inline delta logs. If a node was marked `duplicate-of [tree path]`, record that in place of the search result.
 
 **3. Check Convergence Signals**
 
@@ -753,6 +820,56 @@ The coordinator handles word-level substitution directly during REVISE, guided b
 **Density target**: most paragraphs need zero word-level changes. Replace only what the Voice Auditor flags plus the occasional generic verb the lexicon would improve. If the draft already uses diverse vocabulary, leave it alone.
 
 **The sentence-aloud test**: after any replacement, read the full sentence aloud. If it sounds awkward, forced, or unnatural, revert. The test: would a journalist *at the publication matching the active lexicon* write this sentence? If not, keep the original.
+
+---
+
+### Dependency Verifier (deep rewrite only)
+
+**Purpose**: Decide whether each deep-tree research finding (depth ≥ 4) is unconditionally useful to the current draft, conditionally useful (and what the condition is), or irrelevant. The mechanical 2-of-3 delta test controls *whether* a node expands; the Dependency Verifier controls *whether the result surfaces* to the user. It answers the one question deterministic rules cannot: "does this deep finding matter to *this* draft, given what's already in it?"
+
+**When it runs**: during the RESEARCH phase of a deep-rewrite iteration, **only** when the research tree contains at least one node at depth ≥ 4. Skipped entirely otherwise — shallow trees do not need a verifier. Also skipped under the short-budget and decay rules in the RESEARCH scaling table (see RESEARCH section).
+
+**Input** (provided in the agent prompt):
+- The current draft text (nothing else from the draft side — no iteration history, no rubric, no scores, no prior verifier reports)
+- The flat list of depth-≥-4 findings, each with: tree path (e.g. `Gap 2 → L1 Adversarial → L2 → L3 → L4`), the search query that produced it, the finding itself, and the deltas that justified its expansion
+- The gap description that kicked off this branch of the tree
+
+**Output format** (structured — copies the Reader Agent's annotation shape):
+```
+## Dependency Verifier Report
+
+### Surface-always
+- [Tree path]: [one-line claim]
+  Why load-bearing: [specific reason — e.g., "directly contradicts a claim at L1 Factual"]
+
+### Surface-if-draft-contains
+- [Tree path]: [one-line claim]
+  Trigger: draft mentions "[specific entity, claim, or phrase]"
+  Why: [without the trigger, this is background noise; with it, it's necessary context]
+
+### Log-only
+- [Tree path]: [one-line claim]
+  Why gated: [speculative / redundant with shallower finding / off-thesis]
+
+### Contradictions
+- [Tree path A] says X; [Tree path B] says Y
+  Resolution: [suggestion — e.g., "prefer the primary source", "surface both and let the draft address the tension"]
+```
+
+**Behavioral rules**:
+- Reads cold. No access to the iteration log, prior scores, or previous verifier reports. Like the Clean Slate Agent, this impartiality is the point
+- Every finding must cite its full tree path
+- Maximum 5 `surface-always` items (forces prioritization)
+- Contradictions are always surfaced regardless of which bucket the contributing findings fell into
+- Never proposes new searches. Never rewrites findings. Only labels them
+- If the draft is short (< 200 words), be more generous with `surface-if-draft-contains` — short drafts have less context, so more findings are borderline
+- If the draft already cites many sources, be stricter with `surface-always` — the marginal value of a deep finding drops when the draft is already well-sourced
+
+**How the coordinator uses the report**:
+- `surface-always` findings go into the user-facing synthesis bundle in RESEARCH step 5
+- `surface-if-draft-contains` findings are kept in a sidecar list. During DRAFT, the coordinator scans whether the draft (after applying other changes) contains the trigger; if yes, the finding is surfaced inline as an optional inclusion. If no, the finding stays logged-only for this iteration and can be re-evaluated next iteration
+- `log-only` findings are written to `research/findings.md` but never shown to the user
+- Contradictions always surface, flagged as such, so the user can choose how to resolve them
 
 ---
 

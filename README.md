@@ -106,18 +106,21 @@ Each step targets the weakest dimension:
 
 Every version is kept. If a revision damages more than it improves, the loop reverts and tries a different angle.
 
+In deep-rewrite mode, each iteration also runs a **query-decomposition research tree**. Gap Analysis identifies up to three substantive gaps, each spawns three level-1 sub-questions (factual, adversarial, contextual), and nodes expand only when the search result passes a mechanical 2-of-3 delta test (new entity, new number, or new source class). The tree defaults to depth 4 and reaches depths 5–6 only when a contradiction is found. A **Dependency Verifier** subagent runs on the deepest nodes and labels each finding as `surface-always`, `surface-if-draft-contains-X`, or `log-only` — so deep context only reaches the user when the current draft actually needs it. Everything is logged with auditable delta trails in `research/findings.md`.
+
 Once all dimensions reach 7+ and gains stall, the loop shifts into the **Breakthrough Protocol**: reading as a skeptical member of the target audience, testing alternative document structures, and applying hard constraints (cut 30% of word count, rewrite the opening three ways, remove all hedging). These push past the plateau where incremental edits stop helping.
 
 After the loop exits, a **Clean Slate Review** runs. A separate agent with zero context reads the final text cold and flags anything unclear, unsupported, or confusing to a first-time reader. Every question that agent raises gets resolved by editing the text before the run ends.
 
 ## Review Agents
 
-Three agents review the text across two phases:
+Four agents review the text across three phases:
 
 | Agent | Phase | What it catches |
 |-------|-------|----------------|
 | **Reader Agent** | Every iteration | Engagement drops, comprehension failures, too many technical terms in one sentence, references that force the reader to scroll back |
 | **Voice Auditor** | Every iteration | AI-tell patterns, sentence template repetition, rhythm monotony, overuse of the same transition words, formality-level drift from the target register, words that appear in the active lexicon's avoided vocabulary |
+| **Dependency Verifier** | RESEARCH, deep rewrite only | Reads cold. Labels each deep-tree (depth ≥ 4) research finding as `surface-always`, `surface-if-draft-contains-X`, or `log-only`, so deep context only reaches the user when the current draft actually depends on it |
 | **Clean Slate Agent** | Once, after loop | Reads final text with zero context; flags anything unclear, unsupported, contradictory, or confusing to a first-time reader |
 
 The per-cycle agents launch fresh each cycle with no memory of prior runs, so blind spots don't accumulate. Short budgets trigger automatic scaling: under 15 minutes, only the Voice Auditor runs; under 10, neither per-cycle agent runs and the coordinator does its own pass. The Clean Slate Agent always runs.
