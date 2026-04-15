@@ -67,11 +67,12 @@ Generate a draft and save it to the queue. Never post it.
 
 ### Steps
 
-1. **Generate an ID.** Format: `YYYYMMDD-HHMM-<slug>`. The slug is 2-4 lowercase words from the topic, hyphen-separated, no punctuation. Example: `20260414-1545-detection-research`.
+1. **Generate an ID.** Shell out: `Bash(node scripts/selfpost-q.mjs id "<topic>")`. The CLI returns a deterministic `YYYYMMDD-HHMM-<slug>` string using local time and a stopword-stripped slug. Use it verbatim. If the Node helpers aren't installed, fall back to constructing the id yourself with the same format (2-4 lowercase content words, hyphen-separated).
 2. **Draft the content.** Apply the [Generation Rules](#generation-rules) below. For a single tweet, produce one body of ≤ 280 characters. For a thread, produce numbered sections `# 1`, `# 2`, ... with each section ≤ 280 characters.
 3. **Write the file.** Path: `queue/twitter/<id>.md`. Use the [Queue File Format](#queue-file-format) exactly. Set `status: draft`.
-4. **Show the user the draft.** Echo the body in a fenced block. Remind them: "Flip `status: ready` in the frontmatter when you're happy with this, then run `/selfpost run` to post."
-5. **Log a todo.** Add "Review and approve `<id>`" to the session todo list if you're tracking one.
+4. **Validate.** Shell out: `Bash(node scripts/selfpost-q.mjs validate <id> --stage=new --json)`. If the CLI returns non-zero, fix the flagged issues before presenting to the user. If the helpers aren't installed, skip this step but mention the draft hasn't been validated.
+5. **Show the user the draft.** Echo the body in a fenced block. Remind them: "Flip `status: ready` in the frontmatter when you're happy with this, then run `/selfpost run` to post. You can also flip it via `node scripts/selfpost-q.mjs status <id> ready`."
+6. **Log a todo.** Add "Review and approve `<id>`" to the session todo list if you're tracking one.
 
 ### Never do during `new`
 - Post the content.

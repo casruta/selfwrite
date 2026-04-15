@@ -37,6 +37,7 @@ import {
   VALID_STATUSES,
   DAILY_CAP,
 } from '../lib/validate.mjs';
+import { slugify, generateId } from '../lib/slug.mjs';
 
 const QUEUE_DIR_DEFAULT = 'queue/twitter';
 
@@ -297,11 +298,22 @@ function cmdStatus({ positional, flags }) {
     return 3;
   }
 
-  // rebuild the frontmatter block, preserving body verbatim
-  const newFrontmatter = { ...frontmatter, status: newStatus };
-  const yamlOut = yamlStringify(newFrontmatter);
-  const bodyPart = body.startsWith('\n') ? body : `\n${body}`;
-  const out = `---\n${yamlOut}---${bodyPart}`;
+  // Prefer a line-level edit over a YAML round-trip so untouched fields
+  // keep their original formatting (inline arrays, quote style, ordering).
+  // Fall back to round-trip only if the status line can't be located, which
+  // would be unusual given validateFrontmatter already passed.
+  const fmMatch = raw.match(/^(---\r?\n)([\s\S]*?)(\r?\n---\r?\n?)/);
+  let out;
+  const statusLineRegex = /^(\s*status:\s*)\S+/m;
+  if (fmMatch && statusLineRegex.test(fmMatch[2])) {
+    const newFm = fmMatch[2].replace(statusLineRegex, `$1${newStatus}`);
+    out = raw.replace(fmMatch[0], fmMatch[1] + newFm + fmMatch[3]);
+  } else {
+    const newFrontmatter = { ...frontmatter, status: newStatus };
+    const yamlOut = yamlStringify(newFrontmatter);
+    const bodyPart = body.startsWith('\n') ? body : `\n${body}`;
+    out = `---\n${yamlOut}---${bodyPart}`;
+  }
 
   writeFileSync(path, out, 'utf8');
 
@@ -371,24 +383,73 @@ function cmdStats({ flags }) {
   return 0;
 }
 
+function cmdSlug({ positional, flags }) {
+  const topic = positional.join(' ').trim();
+  if (!topic) {
+    emitError('slug: missing <topic>', { asJson: !!flags.json, code: 'arg_error' });
+    return 2;
+  }
+  const opts = {};
+  if (flags['max-words']) opts.maxWords = Number(flags['max-words']);
+  if (flags['max-length']) opts.maxLength = Number(flags['max-length']);
+  const result = slugify(topic, opts);
+  if (flags.json) {
+    emitJson({ topic, slug: result });
+  } else {
+    emitText(result);
+  }
+  return 0;
+}
+
+function cmdId({ positional, flags }) {
+  const topic = positional.join(' ').trim();
+  if (!topic) {
+    emitError('id: missing <topic>', { asJson: !!flags.json, code: 'arg_error' });
+    return 2;
+  }
+  const now = flags.now ? new Date(flags.now) : new Date();
+  if (Number.isNaN(now.getTime())) {
+    emitError(`id: invalid --now value: ${flags.now}`, { asJson: !!flags.json, code: 'arg_error' });
+    return 2;
+  }
+  const opts = {};
+  if (flags['max-words']) opts.maxWords = Number(flags['max-words']);
+  if (flags['max-length']) opts.maxLength = Number(flags['max-length']);
+  const result = generateId(topic, now, opts);
+  if (flags.json) {
+    emitJson({ topic, id: result, now: now.toISOString() });
+  } else {
+    emitText(result);
+  }
+  return 0;
+}
+
 function cmdHelp() {
   emitText(`selfpost-q — queue CLI for the selfpost skill
 
 Usage:
   node scripts/selfpost-q.mjs <command> [args] [flags]
 
-Commands:
+Queue commands:
   list     [--status=S] [--json]              List queued items
   show     <id> [--json]                      Print one item
   validate <id> [--stage=new|ready|preflight] [--json]   Run validators
   status   <id> <new-status>                  Atomic frontmatter edit
+                                              (line-level, preserves other fields)
   stats    [--json]                           Queue summary
+
+Pure commands (no queue I/O):
+  slug <topic> [--json] [--max-words=N] [--max-length=N]
+                                              Deterministic slug from a topic phrase
+  id   <topic> [--json] [--now=ISO] [--max-words=N] [--max-length=N]
+                                              YYYYMMDD-HHMM-<slug> id
 
 Flags:
   --json              JSON output to stdout
   --queue-dir=PATH    Override queue directory (default: queue/twitter)
   --status=S          Filter list by status
   --stage=S           Validation stage (default: preflight)
+  --now=ISO           Override 'now' for id command (for testing)
 
 Valid statuses: ${VALID_STATUSES.join(', ')}
 `);
@@ -412,6 +473,8 @@ function main() {
     case 'validate':  return cmdValidate({ positional, flags });
     case 'status':    return cmdStatus({ positional, flags });
     case 'stats':     return cmdStats({ positional, flags });
+    case 'slug':      return cmdSlug({ positional, flags });
+    case 'id':        return cmdId({ positional, flags });
     default:
       emitError(`unknown command: ${cmd}. Run with --help for usage.`, { asJson: !!flags.json, code: 'arg_error' });
       return 2;
