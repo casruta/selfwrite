@@ -5,3 +5,28 @@
 .vscode/
 .idea/
 *.log
+
+# Node (Stage 2+)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Vitest / coverage
+coverage/
+.nyc_output/
+
+# Playwright (future Tier 2)
+.playwright-profile/
+playwright-report/
+test-results/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# OS / editor extras
+Thumbs.db
+desktop.ini
