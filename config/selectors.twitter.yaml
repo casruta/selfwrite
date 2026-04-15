@@ -1,0 +1,93 @@
+# Selectors configuration for X.com (Twitter) posting automation.
+# Loaded by /selfpost at runtime. When X redesigns the DOM, patch this file
+# instead of rewriting the skill. Always append to rotationHistory when a
+# selector changes so future debugging has context.
+#
+# Schema:
+#   platform        Which site these selectors target
+#   version         Config version (schema + content, bumped on change)
+#   lastVerified    ISO date the selectors were last confirmed live on the site
+#                   Skill warns if this is older than 90 days
+#   notes           Free-form context for humans reading this file
+#   elements        Map of logical name -> selector bundle
+#     description     What this element is, plain English
+#     primary         Natural-language query for Chrome MCP `find`
+#     alternates      Optional list of additional natural-language queries to try
+#                     if `primary` misses, before falling through to CSS fallback
+#     fallback        Ordered list of CSS selectors to try if all NL queries miss
+#     note            Usage guidance (when to prefer which fallback, edge cases)
+#   rotationHistory Append-only log of every change to an element's field
+#
+# Placeholder syntax:
+#   {n}             Zero-based index substitution, used on elements that appear
+#                   multiple times per page (e.g. thread sections). The skill
+#                   substitutes the integer index at call time. Currently only
+#                   {n} is supported; add new placeholders here if introduced.
+#
+# Canonical source:
+#   This file is the source of truth for selectors. The selfpost.md skill
+#   ships an inline safety table as a fallback for when this file is missing
+#   or malformed, but if the two disagree the YAML wins. Never edit the
+#   inline skill table in isolation — update the YAML, let the skill's
+#   fallback table catch up on its own cadence.
+
+platform: twitter
+version: "2026-Q2"
+lastVerified: 2026-04-14
+notes: "Initial extraction from selfpost.md v1 inline table."
+
+elements:
+
+  tweetTextarea:
+    description: "Primary compose textarea. For threads, index 0 is the first section; N increments per added section."
+    primary: "tweet compose text area"
+    fallback:
+      - "[data-testid='tweetTextarea_0']"
+      - "[data-testid='tweetTextarea_{n}']"
+    note: "{n} substitutes the section index for threads. Use 0 for single tweets or the first thread section; 1, 2, ... for subsequent sections."
+
+  postButton:
+    description: "Final 'Post' button that publishes the tweet or thread."
+    primary: "post button"
+    alternates:
+      - "tweet button"
+    fallback:
+      - "[data-testid='tweetButton']"
+      - "[data-testid='tweetButtonInline']"
+    note: "tweetButtonInline appears in inline/quick-compose contexts (reply boxes, mini-composer); tweetButton is the default compose dialog. X calls this button 'Post' since the rebrand, but older NL queries still match 'tweet button'."
+
+  addPostButton:
+    description: "Adds another tweet section to an in-progress thread."
+    primary: "add post to thread"
+    fallback:
+      - "[aria-label='Add post']"
+      - "[data-testid='addButton']"
+    note: "Clickable only after the current section has content. Creates a fresh tweetTextarea with the next index."
+
+  removePostButton:
+    description: "Removes a section from an in-progress thread."
+    primary: "remove post"
+    fallback:
+      - "[aria-label='Remove post']"
+    note: "Appears on hover over a thread section. No known testid alternative as of 2026-04-14."
+
+# Append-only changelog. Add an entry whenever ANY field on ANY element
+# changes. Do not rewrite history; correct mistakes with a new entry.
+#
+# Entry schema:
+#   date          ISO date of the change
+#   element       Which element (or '*' for bulk/structural changes)
+#   field         Which field (primary | fallback[N] | note | description)
+#                 or '*' for multi-field changes
+#   oldValue      Prior value (or short summary for '*' entries)
+#   newValue      New value (or short summary)
+#   reason        Why the change happened (X UI redesign, accessibility audit, etc.)
+#   verifiedBy    "manual" for a human check, or a git commit SHA
+rotationHistory:
+  - date: "2026-04-14"
+    element: "*"
+    field: "*"
+    oldValue: "inline prose table in selfpost.md lines 262-267"
+    newValue: "externalized to config/selectors.twitter.yaml"
+    reason: "Fix #1 migration: extract selectors from skill prose into a standalone config file so future DOM changes are a one-file patch rather than a skill rewrite."
+    verifiedBy: "manual"
