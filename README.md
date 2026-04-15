@@ -285,12 +285,20 @@ The skill caps at 5 posts per run and 10 per rolling 24 hours to keep cadence hu
 
 **Node helpers** (installed by `npm install`; used by the skill via `Bash` at runtime):
 
-- `config/selectors.twitter.yaml` — X.com DOM selectors live here, with primary natural-language queries, fallback CSS chains, and an append-only `rotationHistory` for tracking drift. Patch this one file when X redesigns instead of rewriting the skill.
-- `lib/validate.mjs` — pure validators: character counting (via `twitter-text`), thread structure, frontmatter shape, status state machine, Jaccard-bigram duplicate detection, cadence, posting-hours. 84 vitest cases cover the edge matrix.
-- `scripts/selfpost-q.mjs` — queue CLI: `list`, `show`, `validate`, `status`, `stats` subcommands, human output by default, `--json` for skill consumption.
-- `scripts/check-env.mjs` — session preflight: Node version, queue dir, selectors config (with `lastVerified` staleness check), dependency install, 24h cadence, git cleanliness. Exit 0 / 1 / 2 semantics for the skill to act on.
+- `config/selectors.twitter.yaml` — X.com DOM selectors, with primary natural-language queries, fallback CSS chains, and an append-only `rotationHistory` for tracking drift. Patch this one file when X redesigns instead of rewriting the skill.
+- `lib/validate.mjs` — pure validators: character counting (via `twitter-text`), thread structure, frontmatter shape, status state machine, Jaccard-bigram duplicate detection, cadence, posting-hours.
+- `lib/slug.mjs` — deterministic `slugify` and `generateId` (`YYYYMMDD-HHMM-<slug>`). Replaces the skill's old improvised slug rule.
+- `scripts/selfpost-q.mjs` — queue CLI: `list`, `show`, `validate`, `status`, `stats`, `slug`, `id` subcommands. Status edits are line-level so inline YAML formatting survives.
+- `scripts/check-env.mjs` — session preflight: Node, queue dir, selectors config (with `lastVerified` staleness), dep install, 24h cadence, git cleanliness. Exit 0 / 1 / 2 for skill consumption.
+- `scripts/post_twitter.mjs` — **Tier 2** unattended poster. Playwright on a persistent profile. Opt-in via `/selfpost run --unattended` or explicit user request. Full posting flow, no per-post approval gates. Requires `npx playwright install chromium chromium-headless-shell`.
+- `tests/*.mjs` — vitest suite (112 cases across validators and slug). `npm test` runs green.
 
-Out of scope for this version: Substack, DMs, replies, unattended scheduling. The last one needs a Playwright build (Tier 2 in the plan) — not shipped here.
+**Two tiers of posting:**
+
+1. **Tier 1 (default): Chrome MCP, interactive.** The skill drives your real logged-in Chrome tab. Each tweet has two gates: an in-chat 'send' confirm and the Chrome extension's own Post-button approval. Use when you're at the keyboard.
+2. **Tier 2 (opt-in): Playwright, unattended.** `scripts/post_twitter.mjs` drives a headless Playwright profile. No gates. Use for scheduled/batch posting when you've manually logged into the profile once. Trigger with `/selfpost run --unattended` or a clear phrase like "post the queue in the background". Requires the Playwright browser binaries.
+
+Out of scope for this version: Substack, DMs, replies, scheduled cron-style automation (a scheduler can invoke Tier 2 but isn't shipped as part of the skill).
 
 See [`selfpost.md`](selfpost.md) for the full skill spec.
 
