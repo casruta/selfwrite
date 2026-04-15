@@ -50,12 +50,14 @@ If `node_modules/` is missing (preflight step 1 fails on `validators_installed`)
 
 ### Companion scripts
 
-The skill can shell out to two Node.js helpers for deterministic operations:
+The skill can shell out to these Node.js helpers for deterministic operations:
 
-- `scripts/selfpost-q.mjs` — queue CLI. Subcommands: `list`, `show`, `validate`, `status`, `stats`. Use `--json` flag for machine-parseable output. Prefer this over hand-parsing queue files when you need to list/filter/validate/edit statuses. Full usage: `node scripts/selfpost-q.mjs --help`.
+- `scripts/selfpost-q.mjs` — queue CLI. Subcommands: `list`, `show`, `validate`, `status`, `stats`, `slug`, `id`. Use `--json` flag for machine-parseable output. Prefer this over hand-parsing queue files when you need to list/filter/validate/edit statuses, or when the `new` subcommand needs a deterministic id. Full usage: `node scripts/selfpost-q.mjs --help`.
 - `scripts/check-env.mjs` — preflight (above).
+- `scripts/post_twitter.mjs` — Tier 2 unattended Playwright poster. Requires `npx playwright install chromium chromium-headless-shell`. Called only for opt-in unattended runs.
+- `scripts/selectors-health.mjs` — probes the live x.com/compose/post DOM against `config/selectors.twitter.yaml`. Exit 0 healthy, 1 degraded (only fallbacks matched), 2 critical (selectors missing), 3 session_expired (profile needs login). Recommend running before any Tier 2 batch; can also be scheduled daily via Windows Task Scheduler. Requires a logged-in persistent profile.
 
-Both read from `queue/twitter/` and `config/selectors.twitter.yaml` relative to the current working directory. Neither requires Playwright.
+The first two don't need Playwright; the last two do.
 
 ## Subcommand: `new`
 
