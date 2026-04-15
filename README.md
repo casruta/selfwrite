@@ -10,13 +10,13 @@ The skill is supposed to supplement dense, data-heavy text whilst utilizing poin
 
 #### note: AI-text detectors are evolving daily. At times, entire paragraphs get flagged as AI-generated due to a phrase thats currently over-used by various text models. Finding 2-3 fitting synonyms is generally enough to confuse the AI-detection tool. 
 
-> This repo also ships two sibling skills: **`/selfresearch`** (cited academic research) and **`/selfinvestigate`** (thesis-driven investigation). Jump to [Siblings](#siblings) for install and usage. They share infrastructure with selfwrite (voice register, lexicon, `runs/` convention, four-tier citation verifier) but run their own pipelines.
+> This repo also ships three sibling skills: **`/selfresearch`** (cited academic research), **`/selfinvestigate`** (thesis-driven investigation), and **`/selfpost`** (browser-driven Twitter posting via the Claude for Chrome extension). Jump to [Siblings](#siblings) for install and usage. The first two share infrastructure with selfwrite (voice register, lexicon, `runs/` convention, four-tier citation verifier) but run their own pipelines; `/selfpost` is a distribution layer that turns short-form output into queued, human-approved posts.
 
 ## How to install it 
 
 ```bash
 mkdir -p ~/.claude/skills
-cp selfwrite.md selfresearch.md selfinvestigate.md ~/.claude/skills/
+cp selfwrite.md selfresearch.md selfinvestigate.md selfpost.md ~/.claude/skills/
 ```
 
 Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). No other dependencies.
@@ -191,7 +191,7 @@ cp selfwrite/runs/<run-id>/skill.md ~/.claude/skills/<domain>.md
 
 ## Siblings
 
-This repo also ships **`/selfresearch`** and **`/selfinvestigate`**, two sibling skills that share selfwrite's infrastructure (voice register, lexicon, `runs/` convention, four-tier citation verifier) but run their own pipelines. Both were built to produce cited, verifiable artifacts instead of polished prose: one for academic research, one for investigative journalism.
+This repo also ships three sibling skills. **`/selfresearch`** and **`/selfinvestigate`** share selfwrite's infrastructure (voice register, lexicon, `runs/` convention, four-tier citation verifier) but run their own pipelines — one for academic research, one for investigative journalism. **`/selfpost`** is a different shape: a distribution skill that posts tweets and threads to Twitter/X by driving your logged-in Chrome browser. No API required.
 
 ### `/selfresearch` (cited academic research)
 
@@ -250,6 +250,34 @@ The `--stance` flag shapes how the scoper, wave-search, reflector, and thesis as
 - **`investigate`** when you want a neutral read on a falsifiable claim.
 - **`prove`** when you already have strong priors and want the agent to consolidate supporting evidence efficiently; the thesis assessor still surfaces contradicting evidence before the write.
 - **`disprove`** when you want to stress-test a thesis by aggressively hunting counter-evidence.
+
+### `/selfpost` (browser-driven Twitter posting)
+
+```
+/selfpost <subcommand> [args]
+```
+
+Subcommands: `new "topic" [type]`, `run`, `list`, `show <id>`, `cancel <id>`.
+
+```
+/selfpost new "why small models win at tight tasks"
+/selfpost new "the 2026 state of personal AI tooling" thread
+/selfpost run
+/selfpost list
+```
+
+Drives Chrome via the [Claude for Chrome](https://claude.com/chrome) extension. `new` drafts a tweet or thread and saves it to `queue/twitter/<id>.md` with `status: draft`. You review the file, change the flag to `status: ready`, then `/selfpost run` posts everything marked ready (up to 5 per run, oldest first, with 30-120s jitter between). Before each final Post click, Claude screenshots the composer and waits for your 'send' — the Chrome extension then requires its own confirm on top of that, so there are two gates per tweet.
+
+What you need:
+- Claude for Chrome extension installed and connected (get it from `claude.com/chrome`).
+- A Chrome profile logged into `x.com`.
+- Nothing else — no Twitter API key, no OAuth, no scheduler.
+
+The skill caps at 5 posts per run and 10 per rolling 24 hours to keep cadence human. A duplicate guard rejects near-duplicates of items posted in the last 20 entries. Session expiry, CAPTCHA, and rate-limit responses all mark the current item `status: failed` with the error, stop the run, and tell you what to do.
+
+Out of scope for this version: Substack, DMs, replies, unattended scheduling. The last one needs a Playwright build (Tier 2 in the plan) — not shipped here.
+
+See [`selfpost.md`](selfpost.md) for the full spec, including the DOM selector table, failure catalog, and per-subcommand flow.
 
 ## Example Runs
 
