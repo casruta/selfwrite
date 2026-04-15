@@ -37,13 +37,25 @@ If the user runs `/selfpost` with no subcommand, ask which of the five they want
 
 ## Prerequisites
 
-Before running any posting step, confirm:
+Before running any posting step:
 
-1. **Chrome for Claude extension is installed and connected.** The `mcp__Claude_in_Chrome__*` tools must be available. If they're missing, tell the user to install the extension from `claude.com/chrome` and return once it shows as connected.
-2. **User is logged into x.com in that Chrome profile.** Run `tabs_context_mcp` and, if needed, navigate to `https://x.com/home` in a fresh tab. If the page shows the login screen instead of a feed, stop and ask the user to log in manually. Never attempt to fill login forms — credentials belong to the user.
-3. **Queue directory exists.** If `queue/twitter/` doesn't exist relative to the current working directory, create it with `queue/twitter/README.md` copied from the repo's canonical version.
+1. **Run the preflight check.** Call `Bash(node scripts/check-env.mjs --json)` and parse the JSON. It verifies Node version, queue directory, selectors config (including `lastVerified` staleness), validators library installation, 24h cadence, and git cleanliness of `queue/` and `config/`. Treat the exit code as:
+   - `0`: proceed.
+   - `1`: abort; print the `errors[]` array to the user verbatim and tell them to fix before re-running.
+   - `2`: proceed, but print the `warnings[]` array to the user first.
+2. **Chrome for Claude extension is installed and connected.** (Not checked by the preflight because it's out of Node's process.) The `mcp__Claude_in_Chrome__*` tools must be available. If they're missing, tell the user to install the extension from `claude.com/chrome` and return once it shows as connected.
+3. **User is logged into x.com in that Chrome profile.** Run `tabs_context_mcp` and, if needed, navigate to `https://x.com/home` in a fresh tab. If the page shows the login screen instead of a feed, stop and ask the user to log in manually. Never attempt to fill login forms — credentials belong to the user.
 
-Run all three checks in parallel on the first call of any subcommand in a session. Cache the result for the session so you don't re-check on every subcommand.
+If `node_modules/` is missing (preflight step 1 fails on `validators_installed`), tell the user to run `npm install` at the repo root before re-running the skill. Cache preflight results for the session; re-run only if an earlier subcommand reported a check-level failure that may have been resolved.
+
+### Companion scripts
+
+The skill can shell out to two Node.js helpers for deterministic operations:
+
+- `scripts/selfpost-q.mjs` — queue CLI. Subcommands: `list`, `show`, `validate`, `status`, `stats`. Use `--json` flag for machine-parseable output. Prefer this over hand-parsing queue files when you need to list/filter/validate/edit statuses. Full usage: `node scripts/selfpost-q.mjs --help`.
+- `scripts/check-env.mjs` — preflight (above).
+
+Both read from `queue/twitter/` and `config/selectors.twitter.yaml` relative to the current working directory. Neither requires Playwright.
 
 ## Subcommand: `new`
 
