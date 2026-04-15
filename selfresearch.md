@@ -167,6 +167,24 @@ Launch one `general-purpose` subagent with this prompt:
 > - Order of dependencies: if sub-question B needs B's answer from A (e.g., A defines terms B uses, or A identifies the actors B profiles), mark `depends_on: ["N<id>"]`.
 > - Backend tagging: for each sub-question, assign 1-3 of `[s2, openalex, arxiv, web]`. Prefer academic. Use `web` only when the question genuinely needs non-academic context (current events, regulatory filings, company statements, primary documents not in the literature).
 >
+> **Optional decomposition depth (sub_nodes):**
+> By default, produce a flat DAG. A node may carry a `sub_nodes` array (1-3 entries) ONLY when a single query would flatten a genuinely multi-faceted sub-question. Good triggers:
+> - Angle separation: factual / adversarial / contextual splits of the same question.
+> - Method split: one sub-query for empirical evidence, another for theoretical grounding.
+> - Entity split: when the sub-question implicates multiple distinct actors or regimes that warrant separate retrievals.
+> Do NOT use sub_nodes for narrow, well-scoped sub-questions. The flat DAG is preferred.
+>
+> **Sub-node schema:**
+> ```json
+> {
+>   "sub_id": "N3.1",
+>   "text": "...",
+>   "backends": [...],
+>   "inherits_from": "N3"
+> }
+> ```
+> `inherits_from` references the parent's `N<id>`. Retrieval budget divides equally among sub_nodes of the same parent. Sub-nodes inherit the parent's `backends` unless overridden in the sub-node's own `backends` field.
+>
 > **Output format:**
 > ```json
 > {
@@ -189,6 +207,8 @@ Launch one `general-purpose` subagent with this prompt:
 >   "coverage_gaps": "<any aspects of the question not covered, or 'none'>"
 > }
 > ```
+>
+> Nodes that carry sub_nodes add an optional `sub_nodes` array alongside the fields above. Omit the field entirely when a flat node is sufficient.
 >
 > Return only the JSON object. No preamble.
 
@@ -357,6 +377,7 @@ Runs once per wave. Prompt:
 > 2. If novel_rate < 0.3 for the last 2 waves → prefer DEEPEN over EXPAND (recall is saturating on fresh queries; follow the citation graph instead).
 > 3. If EXPAND: identify 2-5 new sub-questions from gaps surfaced by this wave's findings. New sub-questions must introduce at least one: a named entity, a methodological approach, a time period, or a stakeholder perspective that isn't in any existing node.
 > 4. If DEEPEN: pick 2-5 high-relevance sources (relevance_score >= 0.7) and spawn sub-questions of the form "examine the references of {S_ID}" or "examine works citing {S_ID}". Use the backend's citation-chase endpoint. Never deepen on the same S_ID twice.
+> 4b. **DEEPEN via sub_nodes (alternative).** If a specific existing node showed high novelty but low coverage in one wave (novel_rate >= 0.4 AND the wave's retrievals for that node leave clear angle gaps), you may DEEPEN by proposing 1-3 sub_nodes for that node instead of citation-chase queries. Each sub_node carries its own query text, inherits the parent's backends by default, and sets `inherits_from` to the parent's N-ID. Use this form when the underlying gap is angular (factual / adversarial / contextual) rather than graph-depth (more references of a key paper). Citation-chase remains the default DEEPEN shape; sub_nodes are the right move when the gap is about the question's facets, not its bibliography.
 > 5. If STOP: justify with one sentence. No new nodes spawned.
 > 6. Beyond the three decisions above, mine 2-6 **related_questions_surfaced** per wave: questions that came up but you're NOT pursuing now (because off-scope for the core question, lower priority than what's already in the DAG, or would blow the budget). These feed Phase 3D's Related Questions ranking. For each, include a `category_hint` (one of: `Deeper dive`, `Adjacent angle`, `Contrarian challenge`, `Implications`, `Methodological`) and the S-ID or N-ID that surfaced it.
 >
@@ -374,6 +395,15 @@ Runs once per wave. Prompt:
 >       "spawned_by": "reflector_wave_{wave_index}"
 >     }
 >   ],
+>   "new_sub_nodes": [
+>     {
+>       "sub_id": "N<parent>.<k>",
+>       "text": "<sub-query>",
+>       "backends": [...],
+>       "inherits_from": "N<parent>",
+>       "spawned_by": "reflector_wave_{wave_index}"
+>     }
+>   ],
 >   "related_questions_surfaced": [
 >     {
 >       "text": "<question not pursued this wave>",
@@ -384,11 +414,13 @@ Runs once per wave. Prompt:
 > }
 > ```
 >
+> `new_sub_nodes` is only populated when DEEPEN uses the sub_nodes path (rule 4b). Leave it as an empty array otherwise.
+>
 > Return only the JSON.
 
 Apply the decision:
 - `EXPAND` — append `new_nodes` to `plan.json` with sequential N-IDs.
-- `DEEPEN` — same, but each new node's text is a citation-chase query; backend is restricted to whatever supports the graph endpoint (S2 or OpenAlex).
+- `DEEPEN` — either append `new_nodes` (citation-chase path, default; each new node's text is a citation-chase query, backend restricted to whatever supports the graph endpoint, S2 or OpenAlex), OR attach `new_sub_nodes` to their parent node's `sub_nodes` array (angular-gap path, rule 4b). Do not mix both shapes in a single wave; pick one.
 - `STOP` — set a flag and exit the loop after this wave's merge completes.
 
 Write the reflector's full JSON into `trace.md` under the wave's entry. Append every `related_questions_surfaced` item to a running list at `runs/research_<id>/related_candidates.jsonl`, one entry per line, keyed by `{wave_index, text, category_hint, emerged_from}`. This list is the input to Phase 3D.
@@ -409,6 +441,8 @@ When `DEEPEN` spawns a "examine references of S<id>" node, the wave-search subag
 The coordinator tracks `total_retrievals` across the run. Before dispatching any wave:
 - If `total_retrievals + projected_wave_retrievals > ceiling` → reduce `sources_per_subquestion` for this wave's nodes pro rata.
 - If the ceiling is already hit → skip to Phase 3.
+
+**Sub_nodes share the parent's retrieval budget, not multiply it.** When a node carries `sub_nodes`, the parent's `sources_per_subquestion` allocation divides equally across its sub_nodes. Three sub_nodes under one parent get ~1/3 of the parent's allocation each, not 3x. This keeps optional decomposition depth from silently inflating the ceiling. Parents whose children were spawned by the Reflector's DEEPEN-via-sub_nodes path follow the same rule: the parent's remaining allocation splits across the new sub_nodes for subsequent waves.
 
 This is a hard stop regardless of remaining budget. It prevents runaway retrieval when a question is genuinely broad.
 
