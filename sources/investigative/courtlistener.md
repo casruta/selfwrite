@@ -8,7 +8,7 @@ Used by `/selfinvestigate` for U.S. federal (and some state) court filings, opin
 https://www.courtlistener.com/api/rest/v3
 ```
 
-**Free API key required** — register at `courtlistener.com/sign-up/`. Include as header: `Authorization: Token <your_token>`. Pass through WebFetch via the prompt (WebFetch doesn't support arbitrary headers directly, so note the token in the call or fall back to the public endpoint where available).
+**Free API key required** — register at `courtlistener.com/sign-up/`. The token must be sourced from an environment variable (e.g., `COURTLISTENER_API_TOKEN`) and injected at request time. Never paste the literal token into a prompt, card, subagent instruction, or trace artifact. Include as header: `Authorization: Token <REDACTED>` (the runtime swaps in the env value). WebFetch doesn't support arbitrary headers directly, so note the token reference (never the literal) in the call or fall back to the public endpoint where available.
 
 Rate limits: 5,000 req/hour with a token; lower without.
 
@@ -134,3 +134,7 @@ WebFetch(
 - **Sealed filings** are invisible — the docket will show "SEALED DOCUMENT" as the description; the content isn't available. Note these in `missing_evidence.md` as deliberate gaps.
 - **OCR quality varies** — older filings scanned from paper may have OCR errors in plain_text. For exact quotes, cross-reference the PDF if available.
 - **Title case mismatches** — "United States v. Smith" and "U.S. v. Smith" may not match a naive search. Use variations.
+
+## Security
+
+Before any URL or header reaches `trace.md` or any other run artifact, the payload must be scrubbed so `Authorization: Token`, `api_key=`, `apikey=`, `token=`, and similar auth parameters show `<REDACTED>` as the value. Wave-search subagents run this redaction before emitting URLs or headers to their trace. Examples in this card already use `<REDACTED>` placeholders and must stay that way. If you see a literal API key or token in any run artifact, that is a bug — report and rotate.

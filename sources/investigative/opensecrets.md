@@ -8,24 +8,24 @@ Used by `/selfinvestigate` for money-in-politics synthesis: industry and sector 
 https://www.opensecrets.org/api
 ```
 
-**Free API key required** — register at `opensecrets.org/api`. Include `&apikey=<key>` on every request. Also include `&output=json` (default is XML, which is harder to parse).
+**Free API key required** — register at `opensecrets.org/api`. Keys must be sourced from an environment variable (e.g., `OPENSECRETS_API_KEY`) and injected at request time. Never paste the literal key into a prompt, card, subagent instruction, or trace artifact. Include `&apikey=<REDACTED>` on every request (the runtime swaps in the env value). Also include `&output=json` (default is XML, which is harder to parse).
 
 ## Endpoints used
 
 ### 1. Candidate summary
 
 ```
-GET /?method=candSummary&cid=<cid>&cycle=<year>&apikey=<key>&output=json
+GET /?method=candSummary&cid=<cid>&cycle=<year>&apikey=<REDACTED>&output=json
 ```
 
 Returns total raised, total spent, cash on hand, debts, source-breakdown (individual / PAC / self-financed / other). `cid` is OpenSecrets' candidate ID (not the FEC candidate ID).
 
-To find `cid`: use `method=getLegislators&id=<state>&apikey=<key>` for state delegations, or cross-reference with FEC candidate name.
+To find `cid`: use `method=getLegislators&id=<state>&apikey=<REDACTED>` for state delegations, or cross-reference with FEC candidate name.
 
 ### 2. Top contributors to a candidate
 
 ```
-GET /?method=candContrib&cid=<cid>&cycle=<year>&apikey=<key>&output=json
+GET /?method=candContrib&cid=<cid>&cycle=<year>&apikey=<REDACTED>&output=json
 ```
 
 Returns top 10 contributor organizations (including PACs attributed to parent companies). This is the bundled-by-employer view — more informative than FEC's individual-donation list for most investigative questions.
@@ -33,7 +33,7 @@ Returns top 10 contributor organizations (including PACs attributed to parent co
 ### 3. Top industries funding a candidate
 
 ```
-GET /?method=candIndustry&cid=<cid>&cycle=<year>&apikey=<key>&output=json
+GET /?method=candIndustry&cid=<cid>&cycle=<year>&apikey=<REDACTED>&output=json
 ```
 
 Industry-level breakdown: how much from oil & gas, from finance, from tech, etc. Useful for identifying structural funding patterns.
@@ -41,7 +41,7 @@ Industry-level breakdown: how much from oil & gas, from finance, from tech, etc.
 ### 4. Top industries by sector
 
 ```
-GET /?method=candSector&cid=<cid>&cycle=<year>&apikey=<key>&output=json
+GET /?method=candSector&cid=<cid>&cycle=<year>&apikey=<REDACTED>&output=json
 ```
 
 Same as industry but rolled up into broader sectors (e.g., energy vs. finance).
@@ -49,15 +49,15 @@ Same as industry but rolled up into broader sectors (e.g., energy vs. finance).
 ### 5. Organization profile
 
 ```
-GET /?method=orgSummary&id=<orgid>&apikey=<key>&output=json
+GET /?method=orgSummary&id=<orgid>&apikey=<REDACTED>&output=json
 ```
 
-Given an organization ID, returns total contributions, employees' total donations, PAC contributions, party split, candidates supported. To find `orgid`: `method=getOrgs&org=<name>&apikey=<key>`.
+Given an organization ID, returns total contributions, employees' total donations, PAC contributions, party split, candidates supported. To find `orgid`: `method=getOrgs&org=<name>&apikey=<REDACTED>`.
 
 ### 6. Lobbying expenditures
 
 ```
-GET /?method=orgLobbying&id=<orgid>&year=<year>&apikey=<key>&output=json
+GET /?method=orgLobbying&id=<orgid>&year=<year>&apikey=<REDACTED>&output=json
 ```
 
 Returns total lobbying spend by year and top lobbyists. Cross-references Senate LDA filings.
@@ -65,7 +65,7 @@ Returns total lobbying spend by year and top lobbyists. Cross-references Senate 
 ### 7. Top contributors overall (cycle-wide)
 
 ```
-GET /?method=getOrgs&org=<search>&apikey=<key>&output=json
+GET /?method=getOrgs&org=<search>&apikey=<REDACTED>&output=json
 ```
 
 Search for organizations by name fragment. Returns orgid and basic profile — needed before deeper queries.
@@ -115,7 +115,7 @@ For individual contributor rows inside a response, don't create separate sources
 
 ```
 WebFetch(
-  url="https://www.opensecrets.org/api/?method=candContrib&cid=N00036346&cycle=2020&apikey=<key>&output=json",
+  url="https://www.opensecrets.org/api/?method=candContrib&cid=N00036346&cycle=2020&apikey=<REDACTED>&output=json",
   prompt="Parse OpenSecrets candidate contributor response. Return a JSON object with: candidate_cid, cycle, source, and contributors array. Each contributor has org_name, total, indivs (individual contributions), pacs (PAC contributions). Sort contributors by total desc."
 )
 ```
@@ -141,5 +141,9 @@ This builds the actor map faster than waiting for individual FEC contributions t
 - **Industry codes are coarse** — "Hedge Funds & Private Equity" bundles many distinct actors. For precision, drill into the constituent organizations.
 - **Lobbying data lags** — quarterly LDA filings appear in OpenSecrets 1-2 months after the filing deadline.
 - **No state or local** — federal only. For state lobbying or state campaign finance, use FollowTheMoney.org or state-level systems.
-- **API key required** — without it, every call fails. Store the key in env var and pass via the WebFetch URL; never hardcode.
+- **API key required** — without it, every call fails. Runtime pulls the key from an env var (e.g., `OPENSECRETS_API_KEY`) and injects it into the outbound request. Never hardcode, never paste into a prompt, and never let the literal key reach any run artifact.
 - **Rate limits** — 200 calls/day on the free tier. Plan wave budgets accordingly; cache aggressively.
+
+## Security
+
+Before any URL reaches `trace.md` or any other run artifact, the query string must be scrubbed so `apikey=`, `api_key=`, `token=`, and similar auth parameters show `<REDACTED>` as the value. Wave-search subagents run this redaction before emitting URLs to their trace. Examples in this card already use `<REDACTED>` placeholders and must stay that way. If you see a literal API key in any run artifact, that is a bug — report and rotate.

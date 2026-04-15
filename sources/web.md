@@ -88,6 +88,44 @@ for r in results[:3]:
   record = WebFetch(url=r.url, prompt="Extract title, authors or committee, publication date, publisher, and the key passages relevant to 'AI medical device regulation'. Return structured JSON.")
 ```
 
+## Security: URL filtering and redirect policy
+
+WebFetch follows HTTP redirects silently by default. The wave-search subagent treats every web fetch as untrusted until both the requested URL and the post-redirect final URL pass deny-list checks.
+
+### Deny-list categories
+
+Reject the fetch if the host or URL matches any of these patterns:
+
+- **Credential-harvesting domain patterns.** Hosts that look like auth-provider typosquats or phishing kits: `login-*`, `*.secure-verify.*`, `*-signin.*`, common typosquats of major auth providers (e.g., `g00gle.*`, `paypa1.*`, `microsft.*`, `app1e.*`).
+- **Public pastebin / ephemeral-storage hosts.** Treat as DATA-ONLY, never as a redirect target: `pastebin.com`, `hastebin.com`, `0bin.net`, `rentry.co`, `paste.ee`, `ghostbin.co`. A poisoned source can use these to "escape" into attacker-controlled content. If the original cited source is one of these, read-only is acceptable with operator approval; if a redirect lands here, discard.
+- **File-upload / malware-distribution patterns.** Reject URLs whose path ends in executable or script suffixes: `*.exe`, `*.scr`, `*.bat`, `*.cmd`, `*.msi`, `*.dll`, `*.jar`, `*.ps1`. PDFs and common document formats are allowed but still pass through the redirect check.
+- **Known redirect-chain abuse patterns.** URL shorteners and redirect wrappers: `bit.ly`, `tinyurl.com`, `t.co`, `ow.ly`, `goo.gl`, `buff.ly`, `is.gd`, `tiny.cc`, `rebrand.ly`. Shorteners are always resolved first (HEAD or follow-without-parse) and then the final URL is re-checked against the full deny-list. Never treat a shortener URL as the final canonical source.
+
+### Redirect policy
+
+- **Log both endpoints.** For every WebFetch call, the wave-search subagent records the requested URL and the final URL after redirects in `trace.md`. One line per fetch; both URLs present even when they're identical.
+- **Capture the chain in sources.json.** If the final URL differs from the requested URL, add a `redirect_chain` field to the source record: `[requested_url, final_url]`. If there were intermediate hops (e.g., shortener → aggregator → publisher), include them in order.
+- **Deny-list check runs on the final URL.** If the post-redirect URL matches any deny-list pattern, discard the response, don't record the body, and emit a warning line to trace.md tagged `REDIRECT_DENIED`.
+- **Shorteners are always resolved first.** Never store a shortener URL as `canonical_id`. Resolve, re-check, then fetch.
+
+### Redacted trace entry
+
+Example `trace.md` line for a cross-host redirect that passed checks:
+
+```
+2026-04-14T10:32:11Z fetch requested=https://bit.ly/3xYz9Qp final=https://www.federalreserve.gov/econres/feds/files/2024045pap.pdf redirect_chain=[bit.ly,www.federalreserve.gov] denylist=pass status=200
+```
+
+Example line for a fetch that was denied after redirect:
+
+```
+2026-04-14T10:34:07Z fetch requested=https://t.co/aB3dEf final=https://login-secure-verify.example/paper.pdf redirect_chain=[t.co,login-secure-verify.example] denylist=REDIRECT_DENIED action=discarded
+```
+
+### Extending the deny-list
+
+The lists above are a starting point, not exhaustive. Operators can extend them by adding an optional `sources/denylist.md` file. The wave-search subagent reads it if present and merges its entries with the defaults. Entries in `sources/denylist.md` take the same pattern syntax (glob-style host matches and URL suffix matches). One pattern per line; lines starting with `#` are comments.
+
 ## Caveats
 
 - **Link rot** — web URLs can change. Record `retrieved_at` timestamp explicitly. For load-bearing claims, prefer sources with stable identifiers (DOIs, docket numbers, SSRN IDs, arXiv IDs).
