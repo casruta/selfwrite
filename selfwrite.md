@@ -114,6 +114,8 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
 
    If the user skips all questions, default to: general audience, informative purpose, explainer genre, authoritative tone (register level 3).
 
+9. **Proceed to Length-Routing.** Once intake is complete, the **Length-Routing** section below decides whether this run follows the iteration-loop path (Prompt Decomposition → Rubric → Baseline → The Loop) or the long-form consensus pipeline (Phase A → B → C → D → E). The directory layout in step 3, the `results.tsv` header in step 6, and the rewrite-mode decision in step 7 apply to the iteration-loop path only. Long-form runs use the alternate layout and metrics specified in the Long-Form Branch section. Defer creation of path-specific subdirectories (`versions/` and `research/` for iteration-loop; `plan_cards/` and `paragraphs/` for long-form) until after the routing decision is made.
+
 ---
 
 ## Input Sandboxing Protocol
@@ -315,6 +317,435 @@ Over multiple runs, the distillation phase accumulates lexicon refinements. User
 4. Future runs in the same domain inherit these refinements when the distilled skill is installed
 
 This creates a feedback loop: each run makes the lexicon more precise for the user's domain and voice.
+
+---
+
+## Length-Routing (Long-Form Gate)
+
+Before entering Prompt Decomposition, check whether this run should use the **long-form consensus pipeline** instead of the iteration loop. The iteration loop optimizes a whole artifact with rubric-driven revision; it works well up to ~3000 words but degrades past that. Confirmed failure modes on pieces > 3000 words (observed in committed runs `kent-thiel-vance-deep` 7,467w and `investigate_2026-04-15` ~8,000w):
+
+- Topic drift across sections (subject silently moves off-thesis)
+- Silent thesis reframing in later sections (section 6 concedes what section 2 asserted)
+- Pronoun chains that lose antecedents ("the company", "the network" with no referent reset)
+- Redundant retellings of the same fact in different sections
+- `[inferred: ...]` density climbs through the piece
+
+The long-form pipeline fixes this by locking a **contract plan** before any prose is produced: 15 subagents (5 specialized roles × 3 instances) produce competing plan cards; a Moderator selects-and-repairs a single Locked Plan; then each of 25-30 paragraphs is generated sequentially by a fresh Opus instance that reads all prior paragraphs plus the full Locked Plan.
+
+### Gate Rule
+
+After intake completes, read `length_target` from the intake answers.
+
+| Condition | Route |
+|---|---|
+| `length_target` not set OR ≤ 3000 words | Continue to Prompt Decomposition (existing short-form path) |
+| `length_target` > 3000 words | Ask the user: "Target length is {N} words. Use the long-form consensus pipeline (recommended) or the iteration loop?" |
+| User chooses consensus pipeline | Skip Prompt Decomposition and the iteration loop entirely; execute the **Long-Form Branch** below |
+| User chooses iteration loop | Continue to Prompt Decomposition (existing path, with known failure modes at length) |
+| User explicitly adds `--longform` or `--consensus` at invocation | Skip the ask; go straight to Long-Form Branch |
+
+On unattended run with no response in 30 seconds, default to **long-form consensus pipeline** (since the iteration loop is known to degrade at this length).
+
+### What the Long-Form Branch Replaces and Preserves
+
+**Replaces** (for long-form runs only):
+- Prompt Decomposition (Agentic Intake Workflow) — the Consensus Planning phase produces the Locked Plan instead of a sub-prompt chain + v0
+- Baseline scoring and the iteration loop (THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT) — the pipeline produces the final artifact directly; no iteration
+- The `versions/` directory structure — long-form uses `plan_cards/`, `paragraphs/`, and a single final `report.md`
+
+**Preserves** (runs after the long-form branch produces `report.md`):
+- Rubric Generation (generated before Phase A so Phase D Stitch agents can use it)
+- Clean Slate Review
+- Writer-Polish-Agent (Post-Validation Polish)
+- Skeptical-Editor Smoke Test (Pre-Delivery)
+- Distillation Phase
+- Summary Phase
+
+The long-form branch hands its final `report.md` to Clean Slate Review the same way the iteration loop hands its best `versions/v{N}.md`.
+
+### Directory Layout for Long-Form Runs
+
+Long-form runs use a different layout than the iteration loop. The `versions/`, `research/`, and `decomposition.md` structure from the Setup block is **replaced** by:
+
+```
+selfwrite/runs/<run-id>/
+  plan_cards/
+    thesis_1.json ... thesis_3.json
+    structure_1.json ... structure_3.json
+    evidence_1.json ... evidence_3.json
+    voice_1.json ... voice_3.json
+    adversary_1.json ... adversary_3.json
+  moderator_report.md        # how consensus was resolved, what was surfaced
+  locked_plan.json
+  locked_plan.md             # human-readable view for approval
+  paragraphs/
+    p01.md ... pNN.md
+    p01.meta.json ... pNN.meta.json
+    antecedent_registry.json
+  stitch_report.md           # flagged issues + patches applied
+  report.raw.md              # concatenated paragraphs pre-patch
+  report.md                  # final assembled output (sent to Clean Slate Review)
+  rubric.md                  # generated before Phase A; used by Stitch agents
+  log.md                     # narrative log
+  results.tsv                # long-form metrics (see Phase D)
+  skill.md                   # distilled skill output
+  summary.md                 # final metrics
+```
+
+---
+
+## Long-Form Branch (Consensus Planning + Sequential Paragraphs + Stitch)
+
+**This section executes only when Length-Routing routes a run to the consensus pipeline.** It replaces Prompt Decomposition, Baseline, and the iteration loop. The branch has five phases: **Phase A: Consensus Planning → Phase B: User Approval → Phase C: Sequential Per-Paragraph Generation → Phase D: Stitch & Verify → Phase E: Hand Off to Distillation**.
+
+Generate the rubric (see Rubric Generation section) before Phase A starts — Phase D agents (Coherence Stitch, Voice Audit, Verifier) read it.
+
+All subagents in all phases wrap user-supplied or retrieved text in the Input Sandboxing Protocol fences (see that section).
+
+### Phase A — Consensus Planning (5 roles × 3 instances = 15 parallel subagents)
+
+Dispatch all 15 subagents **in parallel** (one batch of 15 Task tool calls in a single response). Each agent reads: the user's intake answers, any existing `sources.json` / `quotes.jsonl` if research was brought in, the active voice register, and the lexicon's avoided-vocabulary list.
+
+#### Role 1 — Thesis-Framer (×3 instances)
+
+Each instance produces `plan_cards/thesis_N.json` (N = 1, 2, 3):
+
+```json
+{
+  "thesis_sentence": "...",
+  "scope_boundary": {"in": [...], "out": [...], "tangential": [...]},
+  "claim_structure": [
+    {"claim_id": "C-01", "sub_claim": "...", "evidence_class": "primary|secondary|inference"}
+  ],
+  "evidence_coverage_estimate": 0.0
+}
+```
+
+Constraints:
+- `thesis_sentence` ≤ 30 words, falsifiable (if false, a reader must be able to identify the specific observation that would falsify it)
+- 4-8 entries in `claim_structure`, ordered by argumentative role (setup → core → implications)
+- `evidence_coverage_estimate` = fraction of top-salience quotes in `quotes.jsonl` this thesis can load-bear (0.0 if no quotes file exists)
+
+#### Role 2 — Structurer (×3 instances)
+
+Each instance produces `plan_cards/structure_N.json`:
+
+```json
+{
+  "paragraph_count": 27,
+  "paragraphs": [
+    {
+      "id": "P-01",
+      "topic_sentence": "...",
+      "role": "opening",
+      "word_budget": 220,
+      "predecessor_role": null,
+      "successor_role": "framing"
+    }
+  ]
+}
+```
+
+Constraints:
+- `paragraph_count` between 25 and 30 for a ~6000-word target; scale proportionally for other targets at 200-250 words per paragraph
+- `role` from fixed set: `opening | framing | evidence | pivot | concession | thesis_reaffirming | objection_address | kicker`
+- `word_budget` between 200 and 250
+- **At least 2 and at most 3 paragraphs in positions 12-18 must have role `thesis_reaffirming`.** This is where mid-piece reframing typically happens (confirmed in committed long-form runs), so the structure pre-emptively re-loads the thesis there
+- Every `topic_sentence` must be a standalone claim, not a transition sentence
+
+#### Role 3 — Evidence-Mapper (×3 instances)
+
+Each instance produces `plan_cards/evidence_N.json`:
+
+```json
+{
+  "assignments": [
+    {"q_id": "Q-042", "paragraph_id": "P-07", "source_class": "primary", "role": "direct_support"}
+  ],
+  "intentionally_unused": [
+    {"q_id": "Q-051", "reason": "tangential to thesis"}
+  ]
+}
+```
+
+Constraints:
+- Every quote in `quotes.jsonl` receives exactly one assignment OR appears in `intentionally_unused` with a reason
+- `source_class` ∈ {`primary`, `secondary`, `opinion`, `data`}
+- `role` ∈ {`direct_support`, `counter_evidence`, `contextual`, `illustrative`}
+- If no `quotes.jsonl` exists (user brought no research), Evidence-Mappers produce empty assignments and the Moderator skips evidence consensus
+
+#### Role 4 — Voice-Setter (×3 instances)
+
+Each instance produces `plan_cards/voice_N.json`:
+
+```json
+{
+  "lexicon_choice": "economist",
+  "banned_words": [...],
+  "sentence_rhythm_targets": {"mean_len": 19, "stdev": 7, "short_sentence_pct": 0.18},
+  "transition_patterns": {"allowed": [...], "banned": [...]}
+}
+```
+
+Constraints:
+- `lexicon_choice` from the six built-in lexicons in the Lexicon System section
+- `banned_words` = union of the kill-list + the chosen lexicon's avoided vocabulary + any domain-specific words that clash with the target audience
+- `sentence_rhythm_targets` derived from the chosen lexicon's rhythm profile
+- `transition_patterns.banned` must include "However," "Moreover," "Furthermore" unless the lexicon is Op-Ed/Newsletter (Register 5)
+
+#### Role 5 — Adversary (×3 instances)
+
+Each instance produces `plan_cards/adversary_N.json`:
+
+```json
+{
+  "counter_thesis_sentence": "...",
+  "objections": [
+    {"obj_id": "OBJ-001", "severity": 4, "target_sub_claim": "C-03", "description": "...", "rebuttal_required": true}
+  ],
+  "weak_spots": [
+    {"location": "transition between P-14 and P-15", "risk": "thesis reframing likely here"}
+  ]
+}
+```
+
+Constraints:
+- `counter_thesis_sentence` must be the strongest opposing version of the user's thesis, not a strawman
+- `severity` is 1-5 (1 = minor, 5 = existential threat to thesis)
+- `rebuttal_required: true` means the Locked Plan MUST pin this objection to a paragraph
+- Weak spots may reference specific paragraph IDs or transition boundaries from the Structurer's skeleton; if the Structurer's output isn't available at dispatch time, reference ranges like "paragraphs 12-18"
+
+### Moderator Aggregation (single sequential call after all 15 return)
+
+**Core rule: never average, always select-with-repair.** For each role, pick one winner and patch with additions from the others where principled. Never blend language across candidates. Averaging thesis sentences or structure skeletons is the known failure mode this pipeline exists to avoid.
+
+**Step 1 — Thesis selection.** Score each of the 3 theses on:
+- (a) Scope-compatibility with intake (0-1): does the thesis live inside the scope the user asked for?
+- (b) Evidence-coverage estimate (from the card itself)
+- (c) Falsifiability (0-1): if false, would we know? If yes, 1.0; if vague, 0.0
+- (d) Adversary-resistance (0-1): for each of the 3 Adversary cards, count how many of its objections this thesis leaves unrebutted; invert-normalize to (0-1)
+
+Sum the four scores. Pick the highest. **Preserve the winner's exact sentence** — no rewriting, no blending. If the top-2 margin is < 10% of the winner's score, surface both to the user and let them pick.
+
+**Step 2 — Structurer anchor selection.** Convert each 25-30-paragraph skeleton to a claim-DAG (nodes = atomic claims extracted from topic sentences, edges = argumentative role between consecutive paragraphs from {`supports`, `qualifies`, `pivots-to`, `answers-objection`}).
+
+Compute pairwise Jaccard similarity on node sets. Pick the skeleton with the **highest median Jaccard** to the other two as the anchor. Tiebreaker: evidence-coverage (sum of Evidence-Mapper assignments that land on this skeleton's paragraphs).
+
+For each claim present in the other two skeletons but absent from the anchor, include it only if the consensus Evidence-Mapper places a top-decile-salience quote on it. Insert at the position suggested by its predecessor-claim neighbors in the anchor.
+
+**Re-run word-budget allocation from scratch** on the final skeleton. Do not inherit any Structurer's original budgets — they were computed against different paragraph counts.
+
+If median Jaccard < 0.55, surface structural disagreement to the user — this is a signal that the topic is ill-scoped, not a moderation problem.
+
+**Step 3 — Evidence assignment.** Re-key all three Evidence-Mapper proposals to anchor-skeleton paragraph IDs. For each quote Q:
+- 3/3 agree → assign
+- 2/3 agree → assign
+- 3-way split → tiebreaker priority:
+  1. Quote is cited in the paragraph's topic sentence — assign there
+  2. Source-class matches paragraph's argumentative role (primary for evidence, opinion for framing, etc.)
+  3. Earliest-available paragraph (front-load strong evidence)
+
+Track **Q-utilization**: flag any top-decile-salience quote with no assignment to the user as "unused strong evidence."
+
+**Step 4 — Voice aggregation.**
+- `banned_words` = **union** (stricter is safer)
+- `sentence_rhythm_targets` = **numeric average** of the three (the one legitimate averaging — these are distributions, not prose)
+- `lexicon_choice` = **single winner by vote**; if 2-1 split or 3-way split, surface to user
+- `transition_patterns.allowed` = intersection; `transition_patterns.banned` = union; any contradictions (one allows what another bans) surface to user
+
+**Step 5 — Adversary union.** Take the union of all objections. For every objection with `severity ≥ 3`, pin it to a specific paragraph via `must_address`:
+- Match objection's `target_sub_claim` to the paragraph that carries that sub-claim
+- Cap ~1 pinned objection per paragraph
+- Surplus high-severity objections → add a dedicated `objection_address` paragraph cluster (2-3 paragraphs near the end, before the kicker)
+
+### Auto-Resolve vs. Surface-to-User
+
+| Decision | Auto-resolve | Surface to user |
+|---|---|---|
+| Thesis selection | Winner margin ≥ 10% | Margin < 10% |
+| Structurer anchor | Median Jaccard ≥ 0.55 | Jaccard < 0.55 |
+| Evidence 2/3 or 3/3 agreement | Yes | No |
+| Evidence 3-way split, no clear tiebreaker | No | Yes |
+| Unused top-decile quotes | No | Yes (always flag) |
+| Voice banned_words union | Yes | No |
+| Voice lexicon 2-1 or 3-way split | No | Yes |
+| Adversary objection pinning | Yes | No |
+| Adversary overflow beyond ~1-per-paragraph cap | Auto-cluster into objection_address paragraphs | No |
+
+Write `moderator_report.md` explaining each auto-resolve and each surface, with the source plan-card citations.
+
+### Locked Plan Output
+
+The Moderator produces `locked_plan.json`:
+
+```json
+{
+  "thesis": {"sentence": "...", "scope_boundary": {}, "selected_from": "thesis_2"},
+  "voice": {
+    "lexicon": "economist",
+    "banned_words": [],
+    "rhythm": {"mean_len": 19, "stdev": 7, "short_sentence_pct": 0.18},
+    "transition_patterns": {"allowed": [], "banned": []}
+  },
+  "global_constraints": {
+    "must_address": ["OBJ-003", "OBJ-011"],
+    "antecedent_registry": {}
+  },
+  "paragraphs": [
+    {
+      "id": "P-07",
+      "topic_sentence": "...",
+      "role": "evidence",
+      "word_budget": 225,
+      "opening_transition_constraint": "must acknowledge P-06 concession about X",
+      "closing_transition_constraint": "must set up P-08's counterevidence",
+      "evidence_pointers": [
+        {"q_id": "Q-042", "role": "primary", "citation_tag": "{{SRC}}"}
+      ],
+      "adversary_pins": ["OBJ-003"],
+      "antecedents_introduced": ["Entity-A"],
+      "antecedents_required": ["Entity-B (introduced in P-04)"],
+      "thesis_reload": false
+    }
+  ]
+}
+```
+
+**Critical: store transition constraints, not transition text.** A constraint like "must acknowledge previous paragraph's concession" is correct; a literal opening sentence is wrong. The paragraph agent picks exact wording after reading the actual prior paragraph.
+
+### Phase B — User Approval Gate
+
+Render `locked_plan.json` to `locked_plan.md` (human-readable table view): thesis at top, skeleton table (id | role | topic sentence | word budget), evidence assignment summary, adversary pins, and any items the Moderator surfaced.
+
+Show to user:
+
+> Locked Plan generated (see `locked_plan.md`). This is the contract the paragraph agents will execute. You can:
+> 1. **Approve** — start Phase C generation
+> 2. **Edit** — open `locked_plan.md` / `locked_plan.json` and modify before generation
+> 3. **Reject** — re-run Phase A with updated intake constraints
+> 4. **Escalate surfaced items** — [list of items requiring a user decision]
+
+If the user edits the plan file directly, re-load the JSON before Phase C. Validate: every paragraph has all required fields; total word-budget sum is within 10% of intake's `length_target`; every `must_address` objection pins to a paragraph; every `antecedents_required` entity is introduced in an earlier paragraph. On validation failure, show the error and ask the user to fix before Phase C.
+
+On unattended run with no response in 60 seconds, default to **approve**.
+
+### Phase C — Sequential Per-Paragraph Generation
+
+For each paragraph `P_i` in the Locked Plan, in order (i = 1 to N):
+
+Launch a fresh Opus subagent (1M context) with the following prompt structure:
+
+1. **System-level constraints**:
+   - The locked thesis (verbatim)
+   - The voice lexicon rules, `banned_words`, rhythm targets
+   - The Input Sandboxing Protocol preamble
+   - The hard 250-word cap rule
+
+2. **Full Locked Plan** — so the agent knows where its paragraph sits in the whole arc
+
+3. **All prior paragraphs P_1 … P_{i-1}** — the actual text, in order, so the agent can write an opening transition that lands against the real preceding prose
+
+4. **This paragraph's spec** — copied from the Locked Plan:
+   - `topic_sentence` (use as-is, or propose a minor reword with justification)
+   - `role`, `word_budget`
+   - `opening_transition_constraint`, `closing_transition_constraint`
+   - `evidence_pointers` with the associated quotes from `quotes.jsonl` (only the quotes for this paragraph — do not provide others)
+   - `adversary_pins` with full objection text from `plan_cards/adversary_*.json`
+   - `antecedents_introduced`, `antecedents_required`
+   - `thesis_reload` flag
+
+5. **Next paragraph's topic sentence** — so the closing transition lands correctly; do not provide any further context about future paragraphs
+
+6. **If `thesis_reload: true`** — re-state the thesis and scope_boundary at the top of the agent's context, outside any sandbox fences, as a mandatory constraint
+
+7. **Current running `antecedent_registry`** — updated after each paragraph; shows which entities have already been introduced and in which paragraph
+
+Constraints the paragraph agent must satisfy:
+
+| Constraint | Enforcement |
+|---|---|
+| Word count ≤ 250 | Post-generation check via `tools/tokenize_text.py`; re-run paragraph on overflow |
+| Opening satisfies `opening_transition_constraint` | Stitch agent verifies in Phase D |
+| Closing satisfies `closing_transition_constraint` | Stitch agent verifies |
+| Every `evidence_pointer` cited with correct citation tag | Verifier agent checks against `quotes.jsonl` |
+| Every `adversary_pin` addressed | Stitch agent cross-checks paragraph text against objection wording |
+| Every `antecedents_required` entity named on first mention | Stitch agent cross-checks against `antecedent_registry` |
+| No new claims or quotes introduced | Verifier flags any citation to a `q_id` not in `evidence_pointers` |
+| Topic sentence reword ≤ 10 words changed | Hard rule; rewrites beyond this count fail validation |
+
+Output:
+- `paragraphs/p{i:02d}.md` — the prose (body only, no metadata)
+- `paragraphs/p{i:02d}.meta.json` — `{new_antecedents: ["Entity-X"], topic_sentence_reword: null|"reworded text", word_count: NNN}`
+
+**Between paragraphs**: the coordinator reads `p{i:02d}.meta.json`, merges `new_antecedents` into `antecedent_registry.json`, and advances to paragraph i+1. This is the only inter-paragraph state that mutates at runtime.
+
+**Failure handling**:
+- Word overflow → re-run the paragraph once with a note: "Your previous output was {N} words; hard cap is 250. Rewrite to fit without truncation."
+- Second overflow → flag to user; ask whether to accept the current version, edit the spec's `word_budget`, or regenerate from scratch
+- Agent tool errors or malformed output → retry once; if still failing, escalate
+
+**Cost estimate**: ~25-30 serial Opus calls. At ~40-60 seconds per paragraph, Phase C takes ~15-25 minutes wall-clock. A 45m total budget covers this with headroom for Phases A, B, D.
+
+### Phase D — Stitch & Verify
+
+After Phase C completes, assemble `report.raw.md` by concatenating `paragraphs/p01.md` … `pNN.md` in order. Then launch three agents **in parallel**:
+
+**1. Coherence Stitch Agent**
+
+Input: `report.raw.md`, `locked_plan.json`, `paragraphs/antecedent_registry.json`.
+
+Checks:
+- Broken transitions (does every paragraph's opening satisfy its `opening_transition_constraint` *given* the prior paragraph's actual text?)
+- Pronoun resolution (every "it," "the company," "the network," "they," "this," "these," "such" resolves to a clear antecedent within the same paragraph or the immediately preceding one)
+- Antecedent integrity (every entity referenced matches the `antecedent_registry`; first mention in a paragraph reintroduces the entity by name if it was introduced more than 2 paragraphs ago)
+- Redundant retellings (no two paragraphs narrate the same event with > 60% content overlap; fact mentions after the first should be compressed references, not re-narrations)
+- Silent thesis reframings (does any paragraph contradict a claim asserted in an earlier paragraph? Compare claims paragraph-by-paragraph against the Locked Plan's `thesis` and `claim_structure`)
+
+Output: `stitch_report.md` with a list of `{paragraph_id, issue_type, severity, issue_description, suggested_fix}` entries. Severity is 1-3; severity ≥ 2 triggers a patch re-run.
+
+**2. Voice Audit Agent**
+
+Reuse the Voice Auditor pattern and prompt from the Voice Auditor section below, but operating on the concatenated `report.raw.md` instead of a single-iteration draft. Checks rhythm consistency across paragraph boundaries, lexicon compliance, AI-tell patterns, transition diversity (every consecutive-paragraph pair uses a transition from the active lexicon's allowed set).
+
+Output: voice audit annotations appended to `stitch_report.md`.
+
+**3. Verifier Agent**
+
+Check every `{{SRC/SYN/INF/UNV}}` tag in `report.raw.md` against `quotes.jsonl`:
+- `{{SRC:Q-ID}}` → Q-ID must exist in quotes.jsonl AND match a Locked Plan `evidence_pointer` for that paragraph
+- `{{SYN:Q-ID1,Q-ID2,...}}` → all Q-IDs exist
+- `{{INF:reasoning}}` → inference is grounded in at least one cited quote in the same paragraph
+- `{{UNV:gap}}` → flagged but allowed; aggregate count reported to user
+
+Unresolved tags are Severity 3 (must fix). Output: verification annotations appended to `stitch_report.md`.
+
+### Patch Re-Runs (not cascade)
+
+For each Severity ≥ 2 issue in `stitch_report.md`, re-run the single affected paragraph's agent with the stitch feedback appended to its context. Preserve all prior paragraphs unchanged. **Do NOT cascade re-runs to paragraphs i+1 through N** — accept minor downstream staleness in exchange for O(k) cost instead of O(N).
+
+Cap patches at 2 per paragraph. If a paragraph fails twice, escalate to user: "Paragraph P-{i} has failed stitch twice. Options: (1) force-accept current version, (2) edit manually, (3) regenerate from scratch with edited spec."
+
+After patches, re-run Phase D checks on the patched paragraphs only (localized verification, not whole-document). When all Severity ≥ 2 issues are resolved, write the final `report.md`.
+
+### Phase E — Hand Off to Existing Tail
+
+The long-form branch's `report.md` is the final artifact. Pass it into the existing post-processing tail:
+
+1. **Clean Slate Review** (existing section below)
+2. **Writer-Polish-Agent (Post-Validation Polish)** (existing section below)
+3. **Skeptical-Editor Smoke Test (Pre-Delivery)** (existing section below)
+4. **Distillation Phase** (existing section below)
+5. **Summary Phase** (existing section below)
+
+These sections were written for iteration-loop output but work equally on long-form output — they are post-processing steps on a finished artifact, not tied to a specific production pipeline.
+
+**Metrics logging** — the long-form branch has no per-iteration scores. Write the following to `results.tsv` (different header than the iteration-loop version):
+
+```
+phase<TAB>elapsed_s<TAB>plan_cards_generated<TAB>moderator_surfaced_count<TAB>paragraphs_total<TAB>paragraphs_passed_first_try<TAB>paragraphs_patched<TAB>paragraphs_escalated<TAB>stitch_issues_severity2plus<TAB>verifier_unresolved_tags<TAB>final_word_count<TAB>budget_compliance_pct
+```
+
+One row per phase (A, B, C, D, E, plus a final `total` row).
 
 ---
 
