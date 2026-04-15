@@ -10,16 +10,20 @@ The skill is supposed to supplement dense, data-heavy text whilst utilizing poin
 
 #### note: AI-text detectors are evolving daily. At times, entire paragraphs get flagged as AI-generated due to a phrase thats currently over-used by various text models. Finding 2-3 fitting synonyms is generally enough to confuse the AI-detection tool. 
 
+> This repo also ships two sibling skills: **`/selfresearch`** (cited academic research) and **`/selfinvestigate`** (thesis-driven investigation). Jump to [Siblings](#siblings) for install and usage. They share infrastructure with selfwrite (voice register, lexicon, `runs/` convention, four-tier citation verifier) but run their own pipelines.
 
 ## How to install it 
 
 ```bash
-mkdir -p ~/.claude/skills && cp selfwrite.md ~/.claude/skills/selfwrite.md
+mkdir -p ~/.claude/skills
+cp selfwrite.md selfresearch.md selfinvestigate.md ~/.claude/skills/
 ```
 
 Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). No other dependencies.
 
-Verify by running `/selfwrite` in any project.
+`/selfresearch` and `/selfinvestigate` read backend reference cards from `sources/*.md` and `sources/investigative/*.md` at runtime, resolved relative to your current working directory. Either run them from this repo, or copy `sources/` into whatever project you invoke them from.
+
+Verify by running `/selfwrite`, `/selfresearch`, or `/selfinvestigate` in any project.
 
 ## How to use it 
 
@@ -184,6 +188,68 @@ cp selfwrite/runs/<run-id>/skill.md ~/.claude/skills/<domain>.md
 - **Longer budgets improve results, but returns diminish past 2h for short pieces.** A 20-minute column tightening often gains 2-3 points on the weighted composite (a 1-10 scale). A 6-hour deep rewrite of a long report can gain 4+.
 - **Name a publication model during intake.** Saying "write like the Economist" or "Globe and Mail feature tone" loads a lexicon that constrains word choice, phrase patterns, and sentence rhythm to match that publication's voice. This is the single most effective setting for producing natural-sounding text that avoids AI detection. If unsure, skip — a default lexicon is chosen based on your register level.
 - **Check the distilled skill file after each run.** If the patterns hold up, install it. Future runs in the same domain start stronger.
+
+## Siblings
+
+This repo also ships **`/selfresearch`** and **`/selfinvestigate`**, two sibling skills that share selfwrite's infrastructure (voice register, lexicon, `runs/` convention, four-tier citation verifier) but run their own pipelines. Both were built to produce cited, verifiable artifacts instead of polished prose: one for academic research, one for investigative journalism.
+
+### `/selfresearch` (cited academic research)
+
+```
+/selfresearch "research question" <duration>
+```
+
+Duration uses `Nm` or `Nh` format. Minimum 15 minutes.
+
+```
+/selfresearch "known failure modes of RLHF" 30m
+/selfresearch "effects of SNAP benefits on food insecurity" 1h
+/selfresearch "EU AI Act compliance pathways for US firms" 2h
+```
+
+Recommended budgets:
+
+| Output | Budget |
+|--------|--------|
+| Evidence brief (1000-2000 words, 3-5 sections) | 20-30m |
+| Focused report (2000-4000 words, 5-8 sections) | 30-60m |
+| Literature review (3000-6000 words, 6-10 sections) | 1-2h |
+| Exhaustive survey | 2h+ |
+
+Queries Semantic Scholar, OpenAlex, arXiv, and (optionally) web search. Runs a five-phase pipeline: PLAN (sub-question DAG) → ITERATE (wave search with a reflector that decides whether to expand, deepen, or stop) → SYNTHESIZE (quote extraction, outlining, section writing) → VERIFY (per-claim verdict against the extracted quote) → SUMMARIZE. Every claim in the final report carries a four-tier tag (SRC, SYN, INF, UNV) anchored to a specific extracted quote; the verifier pass confirms each tag before the report is released.
+
+### `/selfinvestigate` (thesis-driven investigation)
+
+```
+/selfinvestigate "thesis" <duration> [--stance=prove|disprove|investigate]
+```
+
+Duration uses `Nm` or `Nh` format. Minimum 30 minutes. Default stance: `investigate` (neutral).
+
+```
+/selfinvestigate "Donor networks shifted to funding Trump by 2020, coinciding with foreign-policy shifts" 2h --stance=investigate
+/selfinvestigate "Company X's compliance failures were known at the board level" 90m --stance=prove
+/selfinvestigate "The regulatory-capture narrative at Agency Y is overstated" 3h --stance=disprove
+```
+
+Recommended budgets:
+
+| Output | Budget |
+|--------|--------|
+| Quick investigative brief | 45-60m |
+| Standard investigation (3000-5000 words) | 1-2h |
+| Deep investigation (5000-8000 words) | 2-4h |
+| Book-chapter scope (8000-15000 words) | 4h+ |
+
+Queries FEC (campaign finance), OpenSecrets (lobbying, dark money), SEC EDGAR (corporate filings), CourtListener (federal courts), Wayback Machine (deleted content), plus academic and web sources. Runs a five-stage pipeline: SCOPE (falsifiable thesis restatement, in/out/tangential boundaries) → QUESTION WEB (five layers: Direct, Actor, Chronology, Motive, Tangential) → RESEARCH (wave search with actor / timeline / financial-flow extractors running inline) → CONNECT (actor map, master timeline, causal chains, thesis assessment) → WRITE.
+
+The `--stance` flag shapes how the scoper, wave-search, reflector, and thesis assessor behave. `prove` biases toward consolidating supporting evidence; `disprove` mirrors it for disconfirming evidence; `investigate` stays neutral. All three stances still run counter-queries during search and enforce a mandatory thesis-assessment user gate before writing, so `prove` can't produce a one-sided brief without the honest evidence moment.
+
+### Stance quickguide
+
+- **`investigate`** when you want a neutral read on a falsifiable claim.
+- **`prove`** when you already have strong priors and want the agent to consolidate supporting evidence efficiently; the thesis assessor still surfaces contradicting evidence before the write.
+- **`disprove`** when you want to stress-test a thesis by aggressively hunting counter-evidence.
 
 ## Example Runs
 
