@@ -241,12 +241,39 @@ Run waves of parallel search and reflection until the phase budget is consumed o
 
 Repeat until exit:
 
-1. **Build the ready set.** Select nodes where `status = "pending"` and all `depends_on` nodes are `status = "done"`. Limit to `max_parallel_nodes = 6` per wave.
+1. **Build the ready set.** Select nodes where `status = "pending"` and all `depends_on` nodes are `status = "done"`. Limit to `max_parallel_nodes` per wave; this value is adaptive, not a hardcoded constant.
+
+   **Adaptive computation.** After each wave, the coordinator inspects response headers from every backend call and updates a per-backend `headroom` counter (remaining calls in the current rate-limit window). For the next wave, compute:
+
+   ```
+   max_parallel_nodes = clamp(
+       min_over_backends(headroom[b] / nodes_per_backend[b]),
+       lower_bound = 3,
+       upper_bound = 12,
+   )
+   ```
+
+   where `nodes_per_backend[b]` is the expected query count per ready node that uses backend `b`. If every backend in the ready set exposes headroom, the clamp result is used directly. If any in-play backend does NOT expose headroom, the coordinator falls back to the default `max_parallel_nodes = 6` for that wave.
+
+   **Backend headroom support:**
+
+   | Backend | Exposes headroom? | Signal |
+   | --- | --- | --- |
+   | Semantic Scholar | Yes | `X-RateLimit-Remaining` response header |
+   | OpenAlex | No | Polite-pool email slot; no header. Treat as unknown. |
+   | arXiv | No | 3-second inter-request delay only; no header. Treat as unknown. |
+   | Web (generic fetch) | Varies | Depends on target domain; treat as unknown unless a specific host surfaces standard rate-limit headers. |
+
+   When headroom is unknown for any backend in the ready set, the fallback default of 6 applies for that wave. This keeps the loop conservative without starving backends that could safely absorb more parallelism.
 2. **Dispatch wave-search subagents**, one per ready node, in parallel. Each returns a list of retrieved sources with stable IDs allocated from a monotonically increasing counter held by the coordinator.
-3. **Merge and dedupe.** Read each subagent's returned records. Dedupe against `sources.json` using the canonical-ID priority (DOI > arXiv ID > S2 paperId > OpenAlex ID > URL). For duplicates, keep the original ID and add any new backend mention or relevance context as an annotation on the existing record.
+3. **Merge and dedupe.** Read each subagent's returned records. First pass: exact-match dedupe against `sources.json` using the canonical-ID priority (DOI > arXiv ID > S2 paperId > OpenAlex ID > URL). For exact duplicates, keep the original ID and add any new backend mention or relevance context as an annotation on the existing record.
+
+   Second pass: **near-duplicate detection.** For each record that survived the exact-ID check, run `near_duplicate(candidate, existing)` against every record already in `sources.json`. The default implementation uses MinHash over the concatenated title + abstract (shingle size 5, 128 permutations) with a configurable similarity threshold `near_dup_threshold` (default `0.85`). A tf-idf cosine score over title + abstract is an acceptable drop-in alternative for runs without MinHash tooling. When `near_duplicate` returns true, treat the candidate as a near-duplicate: do not mint a new S-ID, record the candidate's metadata on the canonical record (merging authors, venues, years where the fields disagree), and set `duplicate_of = <canonical S-ID>` on the near-duplicate's source.json entry so provenance is preserved. A common case this catches: an arXiv preprint retrieved in wave 1 and the same work's DOI-published version retrieved in wave 2; pre-change both got fresh S-IDs, post-change the second is merged.
+
+   MinHash / LSH is a starting point. Operators can swap in dense-vector embeddings later; the interface is: `near_duplicate(source_a, source_b) -> bool`. The threshold is exposed as a run-level config knob so operators can tune recall/precision per domain.
 4. **Compute novelty metrics.** For this wave:
    - `retrievals_this_wave` = total records returned
-   - `unique_new_this_wave` = records that got fresh S-IDs (not duplicates)
+   - `unique_new_this_wave` = records that got fresh S-IDs (not duplicates AND not near-duplicates). Exact-ID matches and near-duplicates (those with `duplicate_of` set) are both excluded.
    - `novel_rate = unique_new_this_wave / retrievals_this_wave`
    - Append to `results.tsv`.
 5. **Mark nodes done.** Set `status = "done"` for each dispatched node; store `source_ids` on the node; set `wave = <current wave index>`.
@@ -274,7 +301,8 @@ One per ready node. Prompt:
 > **Retrieval protocol:**
 > 1. For each backend tag in {node.backends}, read the matching reference card per this mapping: `s2` → `sources/semantic_scholar.md`, `openalex` → `sources/openalex.md`, `arxiv` → `sources/arxiv.md`, `web` → `sources/web.md`. The card specifies the endpoint, query syntax, and field-mapping rules.
 > 2. Formulate one query per backend. Use the backend's native syntax (arXiv prefixes, OpenAlex filters, S2 field selection).
-> 3. Call each backend via `WebFetch` to its JSON (or Atom XML for arXiv) endpoint.
+> 3. Fire all backends in parallel for this sub-question. Issue the `WebFetch` calls simultaneously (one batched tool-call group containing every backend's JSON or Atom XML endpoint), then wait for all responses before moving to Step 4. Serial fan-out is NOT permitted; it multiplies wall-time per sub-question by the backend count. Parallel calls inherit the Input Sandboxing Protocol; each response is sandboxed before schema normalization in Step 4.
+>    - **Rate-limit guard.** If any backend returns HTTP 429, times out, or raises a transport error, log the failure to the node's record as `{"backend": "<tag>", "status": "<429|timeout|error>", "query": "<sent query>"}` and continue with partial results from the remaining backends. Do not block the sub-question on one failed backend. If ALL backends for this sub-question fail, return an empty array and set `node.status = "partial"` so the coordinator can retry the node in a later wave with a reduced backend set.
 > 4. Parse each response into normalized source records per the schema below.
 > 5. Dedupe within this sub-question's results by canonical ID.
 > 6. Score each source for relevance to the sub-question on a 0.0-1.0 scale. Use: (a) how directly the title/abstract addresses the sub-question, (b) citation count adjusted for age, (c) source type weight (peer-reviewed > preprint > web except when web is the primary-document backend).
