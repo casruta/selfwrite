@@ -19,11 +19,18 @@ mkdir -p ~/.claude/skills
 cp selfwrite.md selfresearch.md selfinvestigate.md selfpost.md ~/.claude/skills/
 ```
 
-Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). No other dependencies.
+Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). `/selfwrite`, `/selfresearch`, and `/selfinvestigate` have no other dependencies.
 
-`/selfresearch` and `/selfinvestigate` read backend reference cards from `sources/*.md` and `sources/investigative/*.md` at runtime, resolved relative to your current working directory. Either run them from this repo, or copy `sources/` into whatever project you invoke them from.
+**`/selfpost` only.** If you plan to use `/selfpost`, also run `npm install` at the repo root to pull in its Node helpers (validators library, queue CLI, preflight). The skill works without them but falls back to less-reliable Claude-interpreted logic; the helpers give you deterministic char counting, duplicate detection, and selector-config validation.
 
-Verify by running `/selfwrite`, `/selfresearch`, or `/selfinvestigate` in any project.
+```bash
+npm install      # optional, only needed for /selfpost
+npm test         # optional, runs the validators vitest suite
+```
+
+`/selfresearch` and `/selfinvestigate` read backend reference cards from `sources/*.md` and `sources/investigative/*.md` at runtime, resolved relative to your current working directory. `/selfpost` reads `config/selectors.twitter.yaml` and writes to `queue/twitter/` the same way. Either run the skills from this repo, or copy the relevant directories into whatever project you invoke them from.
+
+Verify by running `/selfwrite`, `/selfresearch`, `/selfinvestigate`, or `/selfpost` in any project.
 
 ## How to use it 
 
@@ -271,13 +278,21 @@ Drives Chrome via the [Claude for Chrome](https://claude.com/chrome) extension. 
 What you need:
 - Claude for Chrome extension installed and connected (get it from `claude.com/chrome`).
 - A Chrome profile logged into `x.com`.
-- Nothing else — no Twitter API key, no OAuth, no scheduler.
+- Node.js 20+ and `npm install` at the repo root (for the deterministic helpers — see below). Skill degrades gracefully if absent but cheap to install.
+- No Twitter API key, no OAuth, no scheduler.
 
 The skill caps at 5 posts per run and 10 per rolling 24 hours to keep cadence human. A duplicate guard rejects near-duplicates of items posted in the last 20 entries. Session expiry, CAPTCHA, and rate-limit responses all mark the current item `status: failed` with the error, stop the run, and tell you what to do.
 
+**Node helpers** (installed by `npm install`; used by the skill via `Bash` at runtime):
+
+- `config/selectors.twitter.yaml` — X.com DOM selectors live here, with primary natural-language queries, fallback CSS chains, and an append-only `rotationHistory` for tracking drift. Patch this one file when X redesigns instead of rewriting the skill.
+- `lib/validate.mjs` — pure validators: character counting (via `twitter-text`), thread structure, frontmatter shape, status state machine, Jaccard-bigram duplicate detection, cadence, posting-hours. 84 vitest cases cover the edge matrix.
+- `scripts/selfpost-q.mjs` — queue CLI: `list`, `show`, `validate`, `status`, `stats` subcommands, human output by default, `--json` for skill consumption.
+- `scripts/check-env.mjs` — session preflight: Node version, queue dir, selectors config (with `lastVerified` staleness check), dependency install, 24h cadence, git cleanliness. Exit 0 / 1 / 2 semantics for the skill to act on.
+
 Out of scope for this version: Substack, DMs, replies, unattended scheduling. The last one needs a Playwright build (Tier 2 in the plan) — not shipped here.
 
-See [`selfpost.md`](selfpost.md) for the full spec, including the DOM selector table, failure catalog, and per-subcommand flow.
+See [`selfpost.md`](selfpost.md) for the full skill spec.
 
 ## Example Runs
 
