@@ -468,7 +468,7 @@ The dimension most tied to the task's PURPOSE gets the highest weight.
 
 **Prose / Reports / Analysis:**
 - Specificity: concrete details, numbers, named examples vs. vague generalities
-- Structure: logical flow, clear sections, point-first paragraphs vs. meandering
+- Structural clarity: logical flow and clear sections. Point-first is the default and preferred structure, especially for opening paragraphs of each section. Mid-document context-first paragraphs (used for rhythm, surprise, or narrative setup) are explicitly permitted and not penalized. The key question is not "does every paragraph lead with the point?" but "does the paragraph serve the reader's comprehension and the document's rhythm?" Flag genuine meandering, not deliberate rhythmic choices. (Note: this dimension now scores structural clarity, not point-first compliance.)
 - Audience calibration: tone and complexity match the target reader. Every sentence is self-sufficient: a reader encountering it mid-scroll understands the claim without referring to a glossary or earlier section. Technical terms used more than 2 paragraphs after their definition include a brief inline reminder (parenthetical or appositive). For scores above 7, no sentence should stack 3+ unfamiliar concepts without inline clarification. Target grade 12 reading level. Every sentence must be parseable on first read. No more than one subordinate clause per sentence. All pronouns and demonstratives ('this,' 'these,' 'such') must have an unambiguous referent within the same sentence or the immediately preceding one
 - Actionability: reader knows what to do next / "so what?" is answered
 - Evidence quality: claims backed by specific data vs. unsupported assertions
@@ -922,8 +922,8 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 
 | Pattern | Description | Example |
 |---------|-------------|---------|
-| Kill-list words | Words on the banned list | "robust," "comprehensive," "notable," "demonstrates," "significant" (without p-value) |
-| Em-dash usage | Any em-dash character (— or --) anywhere in the text. Zero tolerance. Replace with colons, semicolons, parentheses, commas, or sentence breaks | "The policy — which was controversial — failed" → "The policy (which was controversial) failed" |
+| Kill-list overuse | Kill-list words are flagged only when the same word appears 3+ times in the artifact (overuse pattern), not on single-instance presence. A documented exception allows kill-list words where meaning genuinely requires them (e.g., "robust" in a methodology discussion of robust statistics; "comprehensive" when describing full-coverage data). The coordinator may retain a kill-list word with a one-line justification note; justified retentions don't trigger another flag. | Flag: the artifact uses "robust" four times to describe unrelated systems. Don't flag: one instance of "robust" in a section on robust regression. |
+| Em-dash overuse | Em-dashes are permitted at natural human density (roughly 1 per 150-200 words). Flag only OVERUSE: 3+ em-dashes in adjacent sentences, or an em-dash in every paragraph. Em-dashes provide natural breathing rhythm; removing them forces stilted circumlocutions, so single or occasional uses are fine. | Bad (flag): "The policy — which was controversial — failed. Critics — mostly economists — attacked it. Supporters — a shrinking group — defended it." Fix: collapse two of the three em-dash pairs into parentheses or commas. Fine (don't flag): one em-dash every few paragraphs. |
 | Hedge clustering | 3+ hedges within 2 sentences | "somewhat arguably perhaps" |
 | Sentence template repetition | Same syntactic structure 3+ times in 5 paragraphs | "[Topic] is [adjective]. [Topic] is [adjective]." |
 | Rhythm monotony | 5+ consecutive sentences within 20% of same word count | All sentences 15-18 words |
@@ -969,7 +969,7 @@ The coordinator handles word-level substitution directly during REVISE, guided b
 
 **When to replace a word**:
 1. The Voice Auditor flagged it as avoided vocabulary — mandatory replacement
-2. The Voice Auditor flagged it as a kill-list word or AI-tell — mandatory replacement
+2. The Voice Auditor flagged it as a kill-list overuse (3+ occurrences of the same word) or AI-tell pattern — advisory replacement. The coordinator may keep a flagged kill-list word if its meaning is genuinely required in context (e.g., "robust" in a discussion of robust statistics); a one-line justification note satisfies the flag and the word stays
 3. The word is generic ("shows," "demonstrates," "indicates," "utilizes") and the active lexicon has a more characteristic alternative — recommended
 
 **How to pick the replacement**:
