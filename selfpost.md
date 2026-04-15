@@ -83,6 +83,29 @@ Generate a draft and save it to the queue. Never post it.
 
 Post all `status: ready` items, oldest first, up to the cap.
 
+### Two tiers
+
+`run` has two execution paths. Pick one based on the user's invocation:
+
+- **Tier 1 (default): Chrome MCP, interactive.** You drive the user's real Chrome tab via `mcp__Claude_in_Chrome__*`. Before every Post click you screenshot the composer and wait for the user to reply 'send'. The Chrome extension adds its own approval prompt on top. Two gates per tweet. Use this when the user is at the keyboard.
+- **Tier 2 (opt-in): Playwright, unattended.** You shell out to `scripts/post_twitter.mjs` which runs a Playwright Chromium with a persistent profile in `.playwright-profile/`. No per-post user confirmation. Use only when the user explicitly asks for unattended posting (`/selfpost run --unattended`, or a user phrase like "post them all without asking me" or "post in the background"). Requires `npm install` and `npx playwright install chromium chromium-headless-shell` once.
+
+When in doubt, use Tier 1. Never silently switch to Tier 2.
+
+### Tier 2 invocation
+
+If the user opts into Tier 2:
+
+1. Confirm Playwright is installed via the preflight (`validators_installed` check). If Playwright isn't installed, tell the user to run `npm install && npx playwright install chromium chromium-headless-shell` and stop.
+2. For each `ready` item (up to the cap of 5), shell out: `Bash(node scripts/post_twitter.mjs --id <id> --json)`.
+3. Parse the stdout JSON. On `ok: true`, continue to the next item. On `ok: false`, stop the run and surface the error to the user.
+4. Between items, pause for 30-120s (the script doesn't enforce this — you do).
+5. After the run, print the same summary as Tier 1: ids posted, URLs, any skipped.
+
+The Playwright script already validates, screenshots to `temp/<id>-<ts>.png`, handles thread sections, and updates frontmatter to `posted` on success or `failed` on error. It does not re-run validation or cadence checks if you pass `--skip-validation` (useful when you've already validated via `selfpost-q validate` immediately before).
+
+Note that Tier 2 cannot solve CAPTCHAs or 2FA prompts. If the Playwright run surfaces `code: captcha` or `code: session_expired`, stop the batch and tell the user to resolve the challenge in the persistent profile (launch headed: `node scripts/post_twitter.mjs --id <id> --dry-run --no-headless` or re-login via the profile).
+
 ### Preflight
 
 Run in parallel:
