@@ -291,6 +291,7 @@ The skill caps at 5 posts per run and 10 per rolling 24 hours to keep cadence hu
 - `scripts/selfpost-q.mjs` — queue CLI: `list`, `show`, `validate`, `status`, `stats`, `slug`, `id` subcommands. Status edits are line-level so inline YAML formatting survives.
 - `scripts/check-env.mjs` — session preflight: Node, queue dir, selectors config (with `lastVerified` staleness), dep install, 24h cadence, git cleanliness. Exit 0 / 1 / 2 for skill consumption.
 - `scripts/post_twitter.mjs` — **Tier 2** unattended poster. Playwright on a persistent profile. Opt-in via `/selfpost run --unattended` or explicit user request. Full posting flow, no per-post approval gates. Requires `npx playwright install chromium chromium-headless-shell`.
+- `scripts/selectors-health.mjs` — selector smoke test. Probes the live x.com/compose/post DOM against `selectors.twitter.yaml` and reports which elements matched (primary / fallback / missing). Run before any Tier 2 batch, or schedule daily to catch X redesigns early. Exit codes: 0 healthy, 1 degraded, 2 critical, 3 session_expired.
 - `tests/*.mjs` — vitest suite (112 cases across validators and slug). `npm test` runs green.
 
 **Two tiers of posting:**
