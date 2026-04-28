@@ -53,13 +53,20 @@ Duration is `Nm` or `Nh`, minimum 10m. Examples:
 /selfwrite "upgrade writing.md to NYT journalist quality" 6h
 ```
 
-Selfwrite picks up your audience, purpose, register, and tone at intake, then iterates THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT until convergence. Every version is kept. Revisions that damage more than they improve revert automatically. Simple-rewrite mode polishes what's there; deep-rewrite mode runs a research tree to surface missing evidence.
+Selfwrite picks up your audience, purpose, register, and tone at intake, then iterates THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT until convergence. Every version is kept. Revisions that damage more than they improve revert automatically.
+
+**Two modes** (works for any text size):
+
+- **Rewrite mode** (default) — improves prose quality, structure, and style. No new content added. Activates automatically.
+- **Deep research mode** (user-activated, opt-in at intake) — runs a query-decomposition research tree alongside each iteration to surface context, counterarguments, and missing evidence. You approve what gets added.
+
+Both modes end with a **mandatory Humanizer Pass** that ports the [Humanizer skill](https://github.com/blader/humanizer/blob/main/SKILL.md) into the pipeline. The pass scrubs 29 AI-tell patterns (inflated significance, copula avoidance, em-dash overuse, rule-of-three forcing, persuasive authority tropes, fragmented headers, knowledge-cutoff disclaimers, and 22 more) from the final draft before delivery. Every rewrite is logged as a diff for inspection.
 
 | Task | Budget |
 |---|---|
 | Quick edits (tighten a column, polish a README) | 15-30m |
 | Full rewrites (reports, memos, skill files) | 45m-2h |
-| Deep research rewrites (add evidence, counterarguments) | 1-6h |
+| Deep research mode (add evidence, counterarguments) | 1-6h |
 
 ### `/selfresearch` (cited academic research)
 
