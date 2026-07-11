@@ -78,7 +78,7 @@ When citing a wayback snapshot as the source:
 | `year` | From snapshot timestamp (not original publication date — distinguish) |
 | `venue` | Original domain + `" (via Wayback Machine)"` |
 | `backend` | `"wayback"` |
-| `credibility_tier` | Tier of the **original source**, not of Wayback itself (Wayback is a faithful archive; credibility inherits from what was archived) |
+| `credibility_tier` | Tier of the **original source**, stored unchanged — never mutate this value. The verifier applies its own separate one-tier penalty at verification time, recorded as `wayback_penalty_applied: true` on the claim (see selfinvestigate.md) |
 | `abstract` | First 1-2 paragraphs of the archived content |
 | `retrieved_at` | When we fetched the snapshot (ISO timestamp) |
 | `retrieval_query` | Note: `"wayback snapshot of <original_url> captured <snapshot_timestamp>"` |
@@ -138,4 +138,5 @@ Example investigative signal: a company's "About Us" page digest changes within 
 - **Snapshot sometimes lies** — if the original site returned an error at crawl time, Wayback may have cached the error page, not the real content.
 - **Save Page Now latency** — the saved snapshot URL may take up to 60 seconds to become available. Wait and retry before citing.
 - **Cite the snapshot, not the live URL** — for any claim grounded in archived content, the citation must be the Wayback snapshot URL with timestamp; the live URL may mislead a future reader if the site has since changed.
-- **Original source credibility still applies** — Wayback doesn't launder credibility. A conspiracy blog's archived page is still a tier-5 source, not a primary document.
+- **Original source credibility still applies** — Wayback doesn't launder credibility. A conspiracy blog's archived page is still a tier-5 source, not a primary document. The stored `credibility_tier` stays the original's tier; the verifier's one-tier Wayback penalty lives on the claim (`wayback_penalty_applied: true`), never written back into the source record.
+- **Snapshot age vs. present-tense claims** — a snapshot older than 18 months cannot be the sole support for a present-tense claim about an actor's current affiliation, role, or status; the sentence shifts to past tense with the snapshot date inline (see the Stage-5 hard rules in selfinvestigate.md).
