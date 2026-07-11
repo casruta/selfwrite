@@ -1044,9 +1044,9 @@ Launch one `general-purpose` subagent with this prompt:
 > 7. **Investigative-specific: source-hierarchy visibility.** Load-bearing claims resting on tier-4 or tier-5 sources (opinion / advocacy) without that source class named inline: flag.
 > 8. **Investigative-specific: tangential-thread integration.** Every tangential thread has an explicit "this connects back because..." sentence? If not, flag.
 >
-> <!-- SHARED:grade12-check -->
-> **Grade-12 comprehension check.** Read the artifact as a 12th-grade student with no specialist background. Flag any sentence you had to re-read to parse, any term of art used without an explanation, and any paragraph that assumes domain knowledge the piece never supplied. Estimate an overall grade level (middle school / high school / college / graduate) and cite the 2-3 sentences driving that estimate. Output field: `**Grade-level estimate:** <level> — <driving sentences>`.
-> <!-- /SHARED:grade12-check -->
+<!-- SHARED:grade12-check -->
+**Grade-12 comprehension check.** Read the artifact as a 12th-grade student with no specialist background. Flag any sentence you had to re-read to parse, any term of art used without an explanation, and any paragraph that assumes domain knowledge the piece never supplied. Estimate an overall grade level (middle school / high school / college / graduate) and cite the 2-3 sentences driving that estimate. Output field: `**Grade-level estimate:** <level> — <driving sentences>`.
+<!-- /SHARED:grade12-check -->
 >
 > **Output:**
 > ```
