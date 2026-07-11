@@ -28,6 +28,8 @@ Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Veri
 
 **Backend reference cards** (`sources/*.md`) are read at runtime by `/selfresearch` and `/selfinvestigate`. Either invoke the skills from this repo or copy `sources/` into whichever project you're working in.
 
+**Optional MCP upgrades** — still no keys required by default. The repo ships a project `.mcp.json` with Playwright MCP (Claude Code asks before starting it), which gives `/selfpost` selector-free unattended posting. Exa/Tavily (research-grade web search) and Zotero (citation library) are documented as opt-in in `sources/mcp-backends.md`; every skill falls back to the WebFetch cards when a server is absent.
+
 **Node helpers** for `/selfpost`:
 
 ```bash

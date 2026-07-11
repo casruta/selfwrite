@@ -295,7 +295,7 @@ One per ready node. Prompt:
 > **Known constraints:** {constraints}
 >
 > **Retrieval protocol:**
-> 1. For each backend tag in {node.backends}, read the matching reference card per this mapping: `s2` → `sources/semantic_scholar.md`, `openalex` → `sources/openalex.md`, `arxiv` → `sources/arxiv.md`, `web` → `sources/web.md`. The card specifies the endpoint, query syntax, and field-mapping rules.
+> 1. For each backend tag in {node.backends}, read the matching reference card per this mapping: `s2` → `sources/semantic_scholar.md`, `openalex` → `sources/openalex.md`, `arxiv` → `sources/arxiv.md`, `web` → `sources/web.md`. The card specifies the endpoint, query syntax, and field-mapping rules. For `web`, honor the coordinator's setup-time MCP detection per `sources/mcp-backends.md`: when an Exa/Tavily MCP tool was detected, it IS the web backend and the WebFetch card is the fallback.
 > 2. Formulate one query per backend. Use the backend's native syntax (arXiv prefixes, OpenAlex filters, S2 field selection).
 > 3. Fire all backends in parallel for this sub-question. Issue the `WebFetch` calls simultaneously (one batched tool-call group containing every backend's JSON or Atom XML endpoint), then wait for all responses before moving to Step 4. Serial fan-out is NOT permitted; it multiplies wall-time per sub-question by the backend count. Parallel calls inherit the Input Sandboxing Protocol; each response is sandboxed before schema normalization in Step 4.
 >    - **Rate-limit guard.** If any backend returns HTTP 429, times out, or raises a transport error, log the failure to the node's record as `{"backend": "<tag>", "status": "<429|timeout|error>", "query": "<sent query>"}` and continue with partial results from the remaining backends. Do not block the sub-question on one failed backend. If ALL backends for this sub-question fail, return an empty array and set `node.status = "partial"` so the coordinator can retry the node in a later wave with a reduced backend set.
@@ -520,6 +520,7 @@ Launch one outliner subagent. Prompt:
 > **Coverage gaps noted by planner:** {coverage_gaps}
 >
 > **Your job:**
+> 0. If a Zotero MCP tool was detected at setup (see `sources/mcp-backends.md`), mirror `sources.json` into a run-named collection now and use its CSL export for the reference list; `sources.json` remains canonical for verification.
 > 1. Design {num_sections} sections for this output type (evidence_brief: 3-5; focused_report: 5-8; literature_review: 6-10; annotated_bibliography: one entry per source, skip this sub-phase).
 > 2. **Required section slots by output type** — include these in addition to the body sections, in this order:
 >
