@@ -2,6 +2,8 @@
 
 Used by `/selfresearch` when a sub-question needs non-academic context: news coverage, policy documents, government reports, blog posts, conference talks, press releases, congressional testimony. Uses the existing `WebSearch` and `WebFetch` tools. This is a fallback — academic backends should be tried first for any sub-question that could plausibly be in the peer-reviewed literature.
 
+> **MCP upgrade:** if an Exa or Tavily MCP tool is connected, it IS the web backend — structured results with full text, same source-record shape — and the WebFetch patterns below are the no-key fallback. Detection and setup live in `sources/mcp-backends.md`.
+
 ## When to use
 
 The planner subagent should tag a sub-question for web backend only if:

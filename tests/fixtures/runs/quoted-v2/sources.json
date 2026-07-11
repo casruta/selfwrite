@@ -1,0 +1,4 @@
+[
+  {"source_id": "S001", "title": "Sycophancy in RLHF models", "abstract": "Models increasingly agree with users even when the user is wrong. This effect grows with model scale."},
+  {"source_id": "S002", "title": "Surface codes", "abstract": "A study of logical qubit fidelity under realistic noise conditions."}
+]

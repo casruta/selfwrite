@@ -57,7 +57,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
    - **Under 15m**: Run only the Voice Auditor (skip Reader Agent — the coordinator's own reading suffices for short pieces). Re-enable Reader Agent if any dimension drops below 5.
    - **Under 10m**: Skip both review agents. The coordinator does its own pass against the rubric and the active lexicon.
    - **15m and above**: Both agents run every iteration (default behavior).
-6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tdecision\treason\tmode\tresearch_findings\tresearch_approved\treader_annotations\tvoice_audit_count\ttree_depth\ttree_nodes\ttree_contradictions\ttree_gated_count`). The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations. The four `tree_*` columns track the RESEARCH decomposition tree (deep-rewrite only); they are 0 in simple-rewrite mode and when flat search was used (`tree_depth=0` is the sentinel for flat search).
+6. Initialize `log.md` and `results.tsv` (with header row: `iteration\ttarget\thypothesis\tcomposite_before\tcomposite_after\tdelta\tmax_single_dim_drop\tdecision\treason\tmode\tresearch_findings\tresearch_approved\treader_annotations\tvoice_audit_count\ttree_depth\ttree_nodes\ttree_contradictions\ttree_gated_count\ttotal_lines`), stamping `# schema_version: 2` as the first line of `results.tsv` (a comment line before the header) and, if `state.json` is used for this run, `"schema_version": 2` inside it. `total_lines` is the artifact's on-disk line count after the iteration's keep/revert decision — the preflight and artifact-drift checks compare the artifact against this column, so it is not optional. When `state.json` is used, also maintain `"artifact": "<relative path>"`, `"artifact_line_count"`, and `"artifact_sha256"` (sha256 of the artifact file), updated after every kept iteration; these are what `node scripts/run-integrity.mjs <run_dir> --preflight` verifies. The `mode` column is `regular` for standard iterations or `red_team`/`structural`/`constraint` for Breakthrough Protocol iterations. The four `tree_*` columns track the RESEARCH decomposition tree (deep-rewrite only); they are 0 in simple-rewrite mode and when flat search was used (`tree_depth=0` is the sentinel for flat search).
 7. **Rewrite mode decision.** Ask the user:
    > "Do you want me to research and add context as I revise, or focus purely on improving what's already here?"
    > 1. **Deep rewrite** — I'll research context, counterarguments, and missing evidence alongside each revision. You approve what gets added.
@@ -65,6 +65,7 @@ Parse `$ARGUMENTS` as: everything in quotes is the task description, the remaini
 
    - If **simple rewrite** (or artifact is code/config/changelog): skip all RESEARCH steps. The loop runs as THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT (no RESEARCH phase).
    - If **deep rewrite**: activate the RESEARCH phase (see below). It runs alongside THINK every iteration.
+   - **If step 4's keyword detection disagrees with this choice** (e.g., detected artifact type is code/config but the user picked deep rewrite): ask one line — "This looks like a {detected_type} artifact; still run the RESEARCH phase?" — rather than silently skipping RESEARCH on the detector's say-so.
 
 8. **Intake questions.** For prose artifacts, ask the user these questions before generating the rubric. Their answers shape the rubric weights and the revision approach. The user can skip any question (defaults apply).
 
@@ -282,6 +283,8 @@ Each lexicon defines five components:
 | **Sentence rhythm** | 15-30 words typical. Uniform, measured pacing. No short punches. No sentence fragments. Complex sentences with embedded clauses are acceptable. |
 | **Transition preferences** | Temporal ("In the reference period," "Year over year"), categorical ("By province," "Among [group]"), methodological ("Using [method],"). Zero editorial transitions. |
 
+**Lexicon precedence:** a lexicon's rhythm profile and phrasing latitude (e.g., Institutional's "complex sentences with embedded clauses are acceptable" above) set style targets only. They never override the grade-12 readability ceiling enforced by the Readability Gate (Adversarial Scoring Protocol) unless the audience is `expert`.
+
 ### Lexicon Selection
 
 During intake, the lexicon is selected in one of three ways:
@@ -489,7 +492,7 @@ Each instance produces `plan_cards/voice_N.json`:
 
 Constraints:
 - `lexicon_choice` from the six built-in lexicons in the Lexicon System section
-- `banned_words` = union of the kill-list + the chosen lexicon's avoided vocabulary + any domain-specific words that clash with the target audience
+- `banned_words` = union of the kill-list (`config/kill-list.yaml`) + the chosen lexicon's avoided vocabulary + any domain-specific words that clash with the target audience
 - `sentence_rhythm_targets` derived from the chosen lexicon's rhythm profile
 - `transition_patterns.banned` must include "However," "Moreover," "Furthermore" unless the lexicon is Op-Ed/Newsletter (Register 5)
 
@@ -664,7 +667,7 @@ Constraints the paragraph agent must satisfy:
 
 | Constraint | Enforcement |
 |---|---|
-| Word count ≤ 250 | Post-generation check via `tools/tokenize_text.py`; re-run paragraph on overflow |
+| Word count ≤ 250 | Post-generation check via `node scripts/readability-check.mjs <paragraph.md> --json` (`word_count` field); re-run paragraph on overflow |
 | Opening satisfies `opening_transition_constraint` | Stitch agent verifies in Phase D |
 | Closing satisfies `closing_transition_constraint` | Stitch agent verifies |
 | Every `evidence_pointer` cited with correct citation tag | Verifier agent checks against `quotes.jsonl` |
@@ -895,13 +898,17 @@ Generate 4-6 scoring dimensions specific to the task. Each dimension needs:
 
 The dimension most tied to the task's PURPOSE gets the highest weight.
 
+**Mandatory dimension:** every rubric must include an Audience Calibration dimension carrying the grade-12 readability clause (see the Prose template's Audience calibration row below), regardless of which domain template applies — a rubric missing it is invalid and must be regenerated before Baseline. If a distilled writing skill from a prior run exists for this domain (an installed skill with Audience Profiles / Jargon Management guidance), inherit its audience and jargon rules into this dimension's observable markers; the Readability Gate (Adversarial Scoring Protocol) is the floor either way and is never relaxed by inheritance.
+
+**Continuing a shared artifact:** if this run's target artifact already exists on disk from a prior `/selfwrite` run rather than starting from a fresh v0, inherit that prior run's `rubric.md` when it can be located; if it can't (or the domain has changed), generate a new rubric but log why inheritance wasn't used in `log.md` before Baseline.
+
 ### Domain Templates (customize per task)
 
 **Prose / Reports / Analysis:**
 - Specificity: concrete details, numbers, named examples vs. vague generalities
 - Structural clarity: logical flow and clear sections. Point-first is the default and preferred structure, especially for opening paragraphs of each section. Mid-document context-first paragraphs (used for rhythm, surprise, or narrative setup) are explicitly permitted and not penalized. The key question is not "does every paragraph lead with the point?" but "does the paragraph serve the reader's comprehension and the document's rhythm?" Flag genuine meandering, not deliberate rhythmic choices. (Note: this dimension now scores structural clarity, not point-first compliance.)
 - Audience calibration: tone and complexity match the target reader. Every sentence is self-sufficient: a reader encountering it mid-scroll understands the claim without referring to a glossary or earlier section. Technical terms used more than 2 paragraphs after their definition include a brief inline reminder (parenthetical or appositive). For scores above 7, no sentence should stack 3+ unfamiliar concepts without inline clarification. Target grade 12 reading level. Every sentence must be parseable on first read. No more than one subordinate clause per sentence. All pronouns and demonstratives ('this,' 'these,' 'such') must have an unambiguous referent within the same sentence or the immediately preceding one
-- Actionability: reader knows what to do next / "so what?" is answered
+- Actionability: reader knows what to do next / "so what?" is answered. **1-2**: piece ends on description with no implication for the reader. **5-6**: implies a general direction ("policymakers should consider this") without naming who or what. **9-10**: names the specific decision-maker and the specific action available to them (e.g., "the city council can adopt Amendment 4B at its next session").
 - Evidence quality: claims backed by specific data vs. unsupported assertions
 - Register discipline: voice stays within the target register level throughout; no drift toward editorial at inappropriate register levels (see Voice Register Spectrum)
 
@@ -912,7 +919,7 @@ The dimension most tied to the task's PURPOSE gets the highest weight.
 - Efficiency: appropriate algorithmic complexity for the problem
 
 **Financial / Data Analysis:**
-- Analytical depth: surface description vs. causal/structural analysis
+- Analytical depth: surface description vs. causal/structural analysis. **1-2**: restates the numbers with no explanation of why they moved. **5-6**: names one plausible cause without ruling out alternatives. **9-10**: traces a causal chain to its structural driver and states what would falsify it.
 - Data integrity: real numbers, proper sourcing, no fabrication
 - Contextual framing: numbers in context (temporal, relative, tangible comparisons)
 - Intellectual honesty: limitations acknowledged, uncertainty stated
@@ -925,9 +932,8 @@ Save rubric to `rubric.md`.
 
 1. Produce the initial artifact (v0) — competent first draft, no over-investment. If Prompt Decomposition ran, v0 is the output of that chain's final "Synthesize" step. If decomposition was skipped, generate v0 directly from the intake answers.
 2. Save to `versions/v0.md` (or appropriate extension)
-3. Score using the **Adversarial Scoring Protocol** (see below)
-4. **ANCHOR BASELINE AT 4-6** — hard rule. A first draft is not excellent. No dimension above 7.
-5. Log scores with evidence to `log.md`, write first row to `results.tsv`
+3. Dispatch the **Score Agent** (see Score Agent section) to score v0. It is scored blind — the agent is never told this is the baseline or the first version, so there is nothing to anchor.
+4. Log scores with evidence to `log.md`, write first row to `results.tsv`
 
 ## The Loop: THINK (+ RESEARCH) → DRAFT → REVIEW → REVISE → SCORE → REFLECT
 
@@ -1106,16 +1112,18 @@ All level 1–3 findings that passed the 2-of-3 gate are eligible. Depth ≥ 4 f
   |---|---|
   | Under 10m deep rewrite | Flat search only, max 2 searches total, no verifier |
   | Under 15m deep rewrite | Decomposition capped at depth 2, no verifier (coordinator gates) |
-  | Composite > 8.5 | Flat search only, max 1 search per gap |
-  | Composite 7.0–8.5 | Decomposition capped at depth 3, verifier inactive (depth never reaches 4) |
-  | Composite < 7.0, budget ≥ 15m | Full tree, default depth 4, ceiling 6 via contradiction trigger |
+  | Score Agent composite > 8.5 | Flat search only, max 1 search per gap — plus one mandatory contradiction-sweep search per gap regardless of composite; self-scoring above 8.5 is exactly when scrutiny matters most |
+  | Score Agent composite 7.0–8.5 | Decomposition capped at depth 3, verifier inactive (depth never reaches 4) |
+  | Score Agent composite < 7.0, budget ≥ 15m | Full tree, default depth 4, ceiling 6 via contradiction trigger |
 
-  Short budget always wins over decay, which always wins over the default.
+  Short budget always wins over decay, which always wins over the default. "Composite" here is always the fresh-context **Score Agent**'s number (see Score Agent section), never the coordinator's own estimate.
 - Log the full tree to `research/findings.md` with the structure shown in REFLECT. Every expansion decision must be traceable through the inline delta logs.
 
 ---
 
 ### DRAFT
+
+Before drafting, run `node scripts/run-integrity.mjs <run_dir> --preflight --json`. A mismatch (the artifact's line count or hash differs from what was last logged) is a hard stop — the artifact was edited outside the loop; resolve it with the user before writing `versions/v{N}-draft.md`. (Deep rewrite only) Also re-check every unresolved entry in `research/pending_conditional.md` against the current draft, per the Dependency Verifier section.
 
 Apply THINK insights to produce a candidate revision. In deep-rewrite mode, also incorporate user-approved RESEARCH findings. Save the draft to `versions/v{N}-draft.md`.
 
@@ -1166,16 +1174,16 @@ Incorporate review annotations into a final version. The coordinator (not the ag
 
 ### SCORE
 
-Follow the full **Adversarial Scoring Protocol** (below). Score `v{N}.md` (the revised version, not the draft).
+Dispatch the **Score Agent** (see Score Agent section) — a fresh subagent with no drafting context — to score `v{N}.md` (the revised version, not the draft) against `v{best}.md`, following the full **Adversarial Scoring Protocol** (below). The coordinator may not overrule the Score Agent's per-dimension numbers; it only decides keep/revert from them.
 
 **Decide: Keep or Revert**
 
 | Outcome | Action |
 |---------|--------|
-| Composite score improved | **KEEP** — v{N} becomes the new best |
-| Score equal but artifact is simpler/cleaner | **KEEP** — simpler is better at equal quality |
-| Score equal or worse | **REVERT** — best_version stays, log what went wrong |
-| Improved target but damaged 2+ other dimensions | **REVERT** — even if composite rose, collateral damage is unacceptable |
+| Composite improved, no dimension dropped, and fewer than 2 dimensions dropped at all | **KEEP** — v{N} becomes the new best |
+| Any dimension dropped ≥1 point, or 2+ dimensions dropped by any amount | **REVERT** — best_version stays; log `max_single_dim_drop` in `results.tsv` and what went wrong |
+| Composite equal, no dimension dropped, and the revision is measurably simpler (word count down ≥5% by `wc -w`, zero claims or data points removed) | **KEEP** — simpler at equal quality; a streak of these is healthy convergence, not failure, and never counts toward the three-consecutive-reverts trigger |
+| Score equal or worse and not covered above | **REVERT** — best_version stays, log what went wrong |
 
 ---
 
@@ -1233,6 +1241,9 @@ Append to `research/findings.md`:
 ```
 Every expansion must be traceable through the inline delta logs. If a node was marked `duplicate-of [tree path]`, record that in place of the search result.
 
+**2b. Verify Ledger Integrity**
+Run `node scripts/run-integrity.mjs <run_dir> --json`. Any error-level check (`iteration_gaps`, `cycle_row_mismatch`, `artifact_line_drift`, `kept_reverted_tally`) blocks the next iteration — reconcile the ledger or the artifact before returning to THINK.
+
 **3. Check Convergence Signals**
 
 | # | Signal | Meaning | Response |
@@ -1248,10 +1259,20 @@ Every expansion must be traceable through the inline delta logs. If a node was m
 | 9 | **Voice Auditor annotation count not decreasing over 4+ iterations** | Drafter isn't learning to avoid AI patterns | Invoke structural rethink focused on breaking sentence templates; manually rewrite the three most-flagged sentences from scratch rather than editing them |
 | 10 | **Reader Agent finds 0 engagement drops for 2 consecutive iterations** | Reader perspective exhausted | Skip Reader Agent for next iteration to save time; re-enable if score drops |
 
-These are advisory signals, not rigid rules. Use judgment. Log which signal triggered and the response chosen.
+Signals #1, #2, #4, and #6 above are mandatory — see the shared convergence rule below. Signals #3, #5, #7, #8, #9, and #10 remain advisory: use judgment and log which signal triggered and the response chosen.
 
-**4. Time Check**
-Run `date +%s`. If remaining time < 1.5x average iteration time, exit the loop and proceed to **Clean Slate Review**. If time remains, return to THINK.
+<!-- SHARED:convergence -->
+**Mandatory convergence triggers.** These are not advisory; when one fires, act on it. (1) Three consecutive reverts — or three consecutive waves adding no usable sources — means the current approach failed: pivot. (2) Plateau — three consecutive kept iterations gaining under 0.3 composite in total, or three waves below the novelty floor — means accept the plateau and hand the remaining time to the next phase. (3) Alternating keep/revert twice in a row means oscillation: escalate to the Breakthrough Protocol, treating oscillation itself as a ceiling. (4) Ceiling reached means accept and move on. To continue past a fired trigger, write a `[SIGNAL OVERRIDE]` entry to log.md stating the specific evidence the signal is wrong; `node scripts/run-integrity.mjs <run_dir>` warns when a plateau pattern has no override entry.
+<!-- /SHARED:convergence -->
+
+**Reconciling plateau acceptance with the entire-budget rule (line 18):** the hard rule to use the entire time budget is satisfied, not violated, by handing remaining iteration-phase time to Clean Slate Review and Distillation pro-rata (extending each phase's allocation by the freed time) — never by grinding low-value iterations to fill the clock, and never by exiting early.
+
+**4. Budget Check**
+<!-- SHARED:budget-stop -->
+**Budget stop (hard rule).** At the start of every wave or iteration, run `date +%s` and compute `elapsed / phase_budget` for the current phase. At or past 110% of the phase budget, force STOP: finish merging work already in flight, skip everything else, and move to the next phase. Before dispatching a wave that uses serialized backends, estimate its duration (serialized calls × per-call spacing × node count); if `elapsed + estimate` would cross the 110% line, drop the serialized backend from this wave or shrink the wave before dispatch rather than discovering the overrun afterward.
+<!-- /SHARED:budget-stop -->
+
+Below 110% of the iteration-phase budget, return to THINK for the next iteration; at or past it, exit the loop and proceed to **Clean Slate Review**.
 
 ---
 
@@ -1298,6 +1319,7 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 - Flag the FIRST point where you'd stop reading (highest priority annotation)
 - Flag any sentence that stacks 3 or more unfamiliar or technical concepts simultaneously. If a sentence needs a glossary to parse, it needs inline clarification or splitting into shorter claims
 - Flag any sentence that depends on a definition from a Key Terms section or earlier paragraph that the reader may not remember. Technical terms used more than 2 paragraphs after their definition need a brief inline reminder (parenthetical or appositive)
+- Flag any specialist term, acronym, or term of art with no definition, analogy, or gloss within one sentence of its first use — unless the audience is `expert`
 - Maximum 8 annotations per review (force prioritization)
 - Each annotation must cite specific text, not vague complaints
 - Never suggest rewrites; only identify problems (the coordinator rewrites during REVISE)
@@ -1349,10 +1371,12 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 - [Para N]: N hedges in M sentences: "[list]"
 ```
 
-**AI-Tell Pattern Catalog** (check for all of these every audit):
+**AI-Tell Pattern Catalog** (check for all of these every audit). `node scripts/readability-check.mjs` emits candidate line numbers for the negation-antithesis and tricolon-burst rows below (`negation_antithesis`, `tricolon_paragraphs` fields) — it only flags candidates; the Voice Auditor confirms or dismisses each one:
 
 | Pattern | Description | Example |
 |---------|-------------|---------|
+| Negation-antithesis | "It's not X, it's Y" / "This isn't about X. It's about Y" used as a rhetorical pivot. Flag ANY occurrence in a kicker or nut graph; 2+ occurrences elsewhere. | "This isn't coincidence. It's a pattern." → state the claim directly: "The pattern recurs across five separate cycles." |
+| Tricolon burst | A single paragraph with 3+ consecutive short parallel clauses — flag regardless of whether the "Sentence template repetition" 3-in-5-paragraphs threshold below is also met. | "This isn't coincidence. It's a pattern. And the pattern has consequences." → cut to one claim or break the rhythm. |
 | Kill-list overuse | Kill-list words are flagged only when the same word appears 3+ times in the artifact (overuse pattern), not on single-instance presence. A documented exception allows kill-list words where meaning genuinely requires them (e.g., "robust" in a methodology discussion of robust statistics; "comprehensive" when describing full-coverage data). The coordinator may retain a kill-list word with a one-line justification note; justified retentions don't trigger another flag. | Flag: the artifact uses "robust" four times to describe unrelated systems. Don't flag: one instance of "robust" in a section on robust regression. |
 | Em-dash overuse | Em-dashes are permitted at natural human density (roughly 1 per 150-200 words). Flag only OVERUSE: 3+ em-dashes in adjacent sentences, or an em-dash in every paragraph. Em-dashes provide natural breathing rhythm; removing them forces stilted circumlocutions, so single or occasional uses are fine. | Bad (flag): "The policy — which was controversial — failed. Critics — mostly economists — attacked it. Supporters — a shrinking group — defended it." Fix: collapse two of the three em-dash pairs into parentheses or commas. Fine (don't flag): one em-dash every few paragraphs. |
 | Hedge clustering | 3+ hedges within 2 sentences | "somewhat arguably perhaps" |
@@ -1391,6 +1415,28 @@ The auditor checks that paragraph-to-paragraph transitions use varied connective
 - Phrase pattern check is mandatory every audit: scan for opportunities to use lexicon phrase patterns in place of generic constructions. Flag at most 3 opportunities per audit — the goal is natural adoption, not forced insertion
 - Avoided-vocabulary scan is mandatory every audit: flag every word in the draft that appears in the active lexicon's avoided vocabulary. For each flagged word, suggest a replacement from the preferred vocabulary when one fits. The coordinator handles replacement during REVISE
 - Never suggest full sentence rewrites — only identify patterns and propose single-word replacements for avoided vocabulary (the coordinator rewrites during REVISE)
+
+---
+
+### Score Agent
+
+**Purpose**: Score `v{N}.md` against the rubric with no drafting context. The coordinator that just ran THINK/DRAFT/REVISE cannot grade its own work objectively — every downstream mechanism (keep/revert, convergence, research-depth throttling) needs a number that didn't come from the author. A fresh subagent removes that conflict of interest.
+
+**Input** (provided in agent prompt, and nothing else — no drafting reasoning, no hypothesis, no iteration history):
+- `rubric.md`
+- `v{N}.md` (the version being scored)
+- `v{best}.md` (the current best version to compare against)
+- Reader Agent and Voice Auditor annotations for this iteration
+
+**Behavioral rules** (these fold in and replace what used to be separate scoring safeguards):
+- **Pre-score weakness articulation**: before assigning any scores, state the 2-3 biggest weaknesses in `v{N}.md`. Write them down first.
+- **Comparative scoring**: for each dimension, state whether `v{N}` is better/same/worse than `v{best}` and why, then assign the score. Scores can go down if the revision damaged a dimension.
+- **Evidence requirement**: every score cites specific artifact content ("Structure: 6/10 — paragraphs 2-3 cover the same ground"), never a bare adjective ("Structure: 7/10 — good organization").
+- Output per-dimension scores, the composite, and the weakness/comparison notes that justify each number.
+
+**The coordinator may not overrule the Score Agent's per-dimension numbers.** It only decides keep/revert from them (see SCORE section).
+
+**Scoring v0**: v0 goes through this same agent, scored blind — the prompt never states that this is the baseline or the first version. This removes the forced 4-6 baseline anchoring that let earlier runs manufacture an upward score arc regardless of real quality.
 
 ---
 
@@ -1464,9 +1510,10 @@ The coordinator handles word-level substitution directly during REVISE, guided b
 
 **How the coordinator uses the report**:
 - `surface-always` findings go into the user-facing synthesis bundle in RESEARCH step 5
-- `surface-if-draft-contains` findings are kept in a sidecar list. During DRAFT, the coordinator scans whether the draft (after applying other changes) contains the trigger; if yes, the finding is surfaced inline as an optional inclusion. If no, the finding stays logged-only for this iteration and can be re-evaluated next iteration
+- `surface-if-draft-contains` findings are appended to `research/pending_conditional.md` as unchecked items (`- [ ] trigger: ... — finding: ...`), never just held in memory. At the **start of every DRAFT**, not only this one, the coordinator re-checks each unresolved entry against the current draft; a match surfaces the finding inline and checks the item off. Entries never expire silently.
 - `log-only` findings are written to `research/findings.md` but never shown to the user
 - Contradictions always surface, flagged as such, so the user can choose how to resolve them
+- Before the run ends, `summary.md` lists every entry in `research/pending_conditional.md` still unchecked, under an "Unresolved Conditional Findings" heading.
 
 ---
 
@@ -1475,8 +1522,8 @@ The coordinator handles word-level substitution directly during REVISE, guided b
 **Annotation decay**:
 - Reader Agent annotations should decrease over iterations as the artifact improves. If they don't decrease after 4 iterations, flag as convergence signal #10.
 - Voice Auditor annotations should decrease over iterations. If they don't, flag as convergence signal #9.
-- If the Voice Auditor returns 0 AI-tell findings and 0 avoided-vocabulary flags for 2 consecutive iterations, skip it for the next iteration to save time. Re-enable if any dimension score drops.
-- If the Reader Agent finds 0 engagement drops for 2 consecutive iterations, skip it for the next iteration. Re-enable if score drops.
+- If the Voice Auditor returns 0 AI-tell findings and 0 avoided-vocabulary flags for 2 consecutive iterations, skip it for **at most 1** iteration to save time — never two in a row, and it always runs unconditionally every 3rd iteration regardless of recent findings. Re-enable immediately if any dimension score drops.
+- If the Reader Agent finds 0 engagement drops for 2 consecutive iterations, skip it for **at most 1** iteration — same one-iteration cap and every-3rd-iteration override as above. Re-enable if score drops.
 
 **Cross-agent conflicts**:
 - If Reader Agent flags a passage as confusing AND Voice Auditor flags the same passage for an AI-tell or avoided vocabulary: apply the Reader fix first (rewriting the sentence usually resolves both).
@@ -1559,41 +1606,26 @@ In `log.md`, breakthrough iterations include:
 
 ## Adversarial Scoring Protocol
 
-Five safeguards against self-inflation:
+Scoring runs inside the fresh-context **Score Agent** (see Score Agent section), whose prompt already embeds three of the original safeguards: pre-score weakness articulation, comparative scoring against `v{best}`, and the evidence requirement. Five more safeguards apply on top:
 
-### 1. Pre-Score Weakness Articulation
-BEFORE assigning ANY scores, state the 2-3 biggest weaknesses in the current version. Write them down. This forces honest assessment before scoring begins.
+### 1. Maximum Increment Rule (advisory)
+No dimension should increase by more than +1 per iteration outside **Structural Rethink** (Breakthrough Protocol), which allows +2 because the artifact is fundamentally reorganized. This is a warning, not a hard cap: the Score Agent may award a larger jump if its evidence requirement justifies it, but must say so explicitly rather than let it pass silently.
 
-### 2. Comparative Scoring
-For each dimension, compare to the previous best version:
-> "Dimension X: v{N} is [better/same/worse] than v{best} because [specific reason]"
-
-Adjust the score accordingly. Scores CAN go down if the revision damaged a dimension.
-
-### 3. Evidence Requirement
-Every score must cite specific content from the artifact:
-> "Structure: 6/10 — paragraphs 2-3 cover the same ground and could be merged; the transition from methodology to findings is abrupt"
-
-NOT: "Structure: 7/10 — good organization"
-
-### 4. Maximum Increment Rule
-No dimension increases by more than +1 per iteration. Exception: **Structural Rethink** iterations (Breakthrough Protocol) allow +2 per dimension, because the artifact is fundamentally reorganized. A mediocre revision cannot jump from 4 to 8, but a structural rethink can jump from 7 to 9.
-
-### 5. Baseline Anchor
-The baseline (v0) scores in the 4-6 range. This is calibration, not false modesty — a first draft is adequate, not excellent.
-
-### 6. Audience-Anchored Assessment
+### 2. Audience-Anchored Assessment
 Score against the audience identified in intake, not against abstract quality. A piece written for general public readers should be scored on whether a general reader would follow it, not whether it's technically rigorous. A piece for experts should be scored on analytical depth, not accessibility. Reference the audience profile targets (sentence length, jargon level, evidence type) from the writing skill when scoring.
 
-### 7. Register Compliance Check
+### 3. Register Compliance Check
 After scoring all dimensions, scan the artifact for editorial anti-patterns that violate the target register level. If the register is ≤ 2 and any anti-patterns from the Editorial Anti-Patterns table are present, Audience Calibration cannot score above 6 regardless of other qualities. Log each violation found with the specific anti-pattern name and the offending text.
 
-### 8. External Review Integration
+### 4. External Review Integration
 After Reader Agent and Voice Auditor annotations are incorporated during REVISE, the scoring step must acknowledge which annotations were addressed and which were deferred. Scoring rules:
 - **Unaddressed high-severity Reader annotations** (engagement drops, comprehension failures): the relevant dimension cannot increase this iteration. No improvement credit for known reader problems that remain.
 - **Unaddressed AI-tell patterns** (Voice Auditor): if 3+ AI-tell patterns from the current audit remain unaddressed, Register Discipline cannot score above its current value.
 - **Avoided vocabulary**: if the Voice Auditor flagged avoided-vocabulary words and any remain unreplaced at the end of REVISE, Voice & Register (or the equivalent voice dimension) cannot increase this iteration.
 - **Transition diversity**: if the Voice Auditor flagged transition monotony and it remains unaddressed, Structure cannot increase this iteration.
+
+### 5. Readability Gate (mandatory for all registers except `expert` audience)
+Before final SCORE, run `node scripts/readability-check.mjs <artifact.md> --audience=<default|general|expert> --kill-list=config/kill-list.yaml --json` on the plain-text artifact. Flesch-Kincaid Grade Level must be ≤ 12.0 (default audience) or ≤ 10.0 (general-public / undergraduate audience). `expert` audience is exempt from the cap, but the script still runs and its stats are logged. Any violation caps Audience Calibration at 6 regardless of other qualities, via the same cap mechanism as safeguard #3 above (Register Compliance Check).
 
 ### Composite Score
 ```
@@ -1620,6 +1652,7 @@ Iterative review agents (Reader, Voice Auditor) develop blind spots because they
 6. Are there internal contradictions (the same metric stated differently in two places, or a claim in Section 3 that conflicts with data in Section 1)?
 7. Does every sentence sound natural when read aloud in contemporary North American or British English? Flag any sentence that sounds academic, archaic, or stilted. Common tells: "persisted across," "the full series," "compositional pattern," "decoupled from the aggregate trend." The test: would this sentence appear in The Economist or the Globe and Mail? If not, flag it.
 8. Does every sentence use contemporary word order and phrasing? Flag inverted constructions, nominalized verbs where a simple verb would work ("a reduction occurred" vs. "it fell"), and unnecessary abstractions ("the compositional pattern" vs. "what types of crime are changing").
+9. Is every acronym spelled out in full on first use, unless the audience is `expert`? Cross-check against `node scripts/readability-check.mjs <artifact.md> --json`'s `acronyms` field for any entry with `defined: false`.
 
 **Output format**:
 ```
@@ -1757,6 +1790,7 @@ Launch one `general-purpose` subagent with this prompt:
 > 4. **Contradictions.** Any claim contradicting another in the piece.
 > 5. **Rhythm monotony.** 5+ consecutive sentences similar in length or shape.
 > 6. **AI-tell saturation.** Score 0-10 overall (0 = obviously human, 10 = obviously AI). Cite 2-3 sentences driving the score.
+> 7. **Grade-12 comprehension.** Apply the Grade-12 comprehension check (defined immediately below this prompt) and report its estimate.
 >
 > **Output:**
 > ```
@@ -1767,8 +1801,15 @@ Launch one `general-purpose` subagent with this prompt:
 > **Unsupported load-bearing claims:** [list]
 > **Contradictions:** [list]
 > **Rhythm monotony:** [list]
+> **Grade-level estimate:** [level] — [driving sentences]
 > **Recommendation:** deliver | revise-and-redeliver | escalate-to-user
 > ```
+
+The following check must be appended verbatim into this subagent's prompt, after the review criteria and before the Output format:
+
+<!-- SHARED:grade12-check -->
+**Grade-12 comprehension check.** Read the artifact as a 12th-grade student with no specialist background. Flag any sentence you had to re-read to parse, any term of art used without an explanation, and any paragraph that assumes domain knowledge the piece never supplied. Estimate an overall grade level (middle school / high school / college / graduate) and cite the 2-3 sentences driving that estimate. Output field: `**Grade-level estimate:** <level> — <driving sentences>`.
+<!-- /SHARED:grade12-check -->
 
 ### Coordinator handling
 
@@ -1856,7 +1897,7 @@ Read the skill file as if seeing it for the first time:
 
 ## Summary Phase
 
-Time allocation: ~10% of total budget. Write `summary.md`.
+Time allocation: ~10% of total budget. Before writing `summary.md`, run `node scripts/run-integrity.mjs <run_dir> --json` one final time; any remaining error-level check must be reconciled before the run is presented as complete.
 
 ### Score Trajectory Table
 ```

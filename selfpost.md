@@ -98,6 +98,7 @@ When in doubt, use Tier 1. Never silently switch to Tier 2.
 
 If the user opts into Tier 2:
 
+0. If Playwright MCP tools are available (ToolSearch `+playwright`; see `sources/mcp-backends.md`), prefer driving the posting flow through them — accessibility-tree actions instead of CSS selectors — and skip `selectors-health` for this run (nothing selector-based to drift). Fall back to the script path below when the MCP server is absent.
 1. Confirm Playwright is installed via the preflight (`validators_installed` check). If Playwright isn't installed, tell the user to run `npm install && npx playwright install chromium chromium-headless-shell` and stop.
 2. For each `ready` item (up to the cap of 5), shell out: `Bash(node scripts/post_twitter.mjs --id <id> --json)`.
 3. Parse the stdout JSON. On `ok: true`, continue to the next item. On `ok: false`, stop the run and surface the error to the user.

@@ -1,0 +1,54 @@
+# config/kill-list.yaml
+#
+# Canonical default kill list: AI-tell words and phrases the skills replace
+# or delete. Referenced by selfwrite.md's banned_words union and consumed
+# mechanically by scripts/readability-check.mjs --kill-list. Seeded from the
+# distilled writing skill produced by the skill-upgrade run
+# (runs/skill-upgrade/versions/v16.md). A run's lexicon may extend this list;
+# it never shrinks it.
+
+words:
+  - utilize
+  - leverage
+  - facilitate
+  - comprehensive
+  - robust
+  - landscape
+  - tapestry
+  - multifaceted
+  - furthermore
+  - moreover
+  - additionally
+  - nevertheless
+  - notable
+  - demonstrates
+  - underscores
+  - various
+  - crucial
+  - pivotal
+  - seamless
+  - holistic
+  - foster
+  - bolster
+  - myriad
+  - plethora
+
+phrases:
+  - it is worth noting
+  - it should be noted
+  - it is important to
+  - in order to
+  - delve into
+  - in conclusion
+  - this suggests that
+  - firing on all cylinders
+  - heavy lifting
+  - at the end of the day
+  - move the needle
+  - low-hanging fruit
+  - deep dive
+  - game changer
+  - paradigm shift
+  - plays a vital role
+  - in today's fast-paced world
+  - stands as a testament

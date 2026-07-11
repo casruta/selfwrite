@@ -126,3 +126,10 @@ WebFetch(
 - **Concept tags** (`concepts[]`) are LLM-derived and noisy. Usable for relevance signal, not for strict filtering.
 - **No fulltext search by default** — only titles and abstracts are indexed for `search`. For specific phrases, consider using multiple quoted terms.
 - **Include `mailto`** — without it, you're rate-limited and deprioritized. With it, you get 100k req/day.
+- **Retraction check** — request `is_retracted` in the field list for every works query. `is_retracted: true` forces the claim's confidence to SPECULATIVE with an inline caveat; the verifier FAILs any HIGH/MODERATE claim resting on a retracted work.
+- **Credibility tier** — set `credibility_tier: 1` for works in a peer-reviewed venue, `3` for preprint/repository-only works. Never leave an academic record with a null tier: the verifier's downgrade rules key off this field.
+- **Citation-count floor** — a work with `cited_by_count` under 3 (allow 0-2 for work under 18 months old) cannot serve as the sole corroborating source that lifts a claim to HIGH confidence.
+
+## Security
+
+The `mailto=` parameter carries the operator's real email address. Before any URL reaches `trace.md`, `sources.json`, or any other run artifact, scrub it so the value reads `<redacted-mailto>`. Wave-search subagents run this redaction before emitting URLs to their trace, exactly as the investigative cards scrub `api_key=`. A literal email address in a run artifact is a bug — report it.

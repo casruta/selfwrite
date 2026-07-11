@@ -1,0 +1,7 @@
+# schema_version: 2
+iteration	target	hypothesis	composite_before	composite_after	delta	decision	reason
+1	a	h	5.0	5.05	+0.05	keep	tiny
+2	b	h	5.05	5.09	+0.04	keep	tiny
+3	c	h	5.09	5.12	+0.03	keep	tiny
+4	d	h	5.12	5.9	+0.78	keep	real gain
+5	e	h	5.9	6.6	+0.7	keep	real gain

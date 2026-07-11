@@ -7,6 +7,22 @@
 > Plan → Act → Observe → Adjust loop. See `selfwrite.md` for the current implementation and
 > `README.md` for user-facing docs.
 
+## Changelog
+
+- **2026-07-11** — Integrity remediation (see `ANALYSIS.md` for the audit). Deterministic gates
+  added: verbatim quote verification (`scripts/verify-quotes.mjs`), run-ledger consistency +
+  preflight (`scripts/run-integrity.mjs`), audience-conditional readability gate
+  (`scripts/readability-check.mjs`, FK <= 12.0 / 10.0), near-duplicate detection
+  (`scripts/near-dupes.mjs`), skill-file lint (`scripts/skill-lint.mjs`). results.tsv now stamps
+  `# schema_version: 2` and adds `max_single_dim_drop` (selfwrite) /
+  `queries_primary`+`queries_counter` (selfinvestigate) columns; older runs keep their layouts
+  (`state-json`, `legacy-synonym`) and are detected, not migrated. Scoring moved to an independent
+  fresh-context Score Agent; stance up-weighting no longer leaks into stored relevance scores;
+  the adaptive header-based parallelism and prose dedup-spec mechanisms were removed as
+  unimplementable.
+- **Pre-2026-07** — Synonym Agent folded into REVISE (results.tsv `synonym_*` columns retired);
+  research tree + Dependency Verifier added; lexicon system added; Phase 0.75 intake added.
+
 ## Context
 
 The user wants a Claude Code skill that turns Claude into a self-improving loop: given any task and a time budget, Claude autonomously iterates on the output, scores itself, asks expert-level probing questions to push quality higher, then distills what it learned into a reusable skill file. This generalizes the existing Continuous Improvement Protocol (which only covers data analysis and writing) to any domain.
