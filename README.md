@@ -142,7 +142,7 @@ Two posting tiers:
 
 ## Shared patterns
 
-All four skills write to `runs/<skill>_<timestamp>/` with versioned outputs, a structured log, and a distilled `skill.md`. Install the distillate to carry learnings into future runs:
+All four skills write to `runs/<skill>_<timestamp>/` with versioned outputs, a structured log, and a distilled `skill.md`. Deterministic validators keep the loops honest — quotes must be verbatim substrings of stored source text (`scripts/verify-quotes.mjs`), run ledgers must reconcile with the artifact (`scripts/run-integrity.mjs`), and reports must pass an audience-conditional grade-12 readability gate (`scripts/readability-check.mjs`); `npm test` exercises all of them against the real runs in `runs/`. Install the distillate to carry learnings into future runs:
 
 ```bash
 cp runs/<run-id>/skill.md ~/.claude/skills/<domain>.md
