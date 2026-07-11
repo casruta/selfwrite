@@ -1,0 +1,6 @@
+# schema_version: 2
+iteration	target	hypothesis	composite_before	composite_after	delta	decision	reason	max_single_dim_drop
+0	baseline	n/a	0	5.0	5.0	baseline	initial scoring	0
+1	voice	tighten ledes	5.0	5.6	+0.6	keep	better ledes	0
+2	structure	reorder sections	5.6	5.4	-0.2	revert	damaged clarity	1
+3	evidence	add citations	5.6	6.1	+0.5	keep	stronger sourcing	0
