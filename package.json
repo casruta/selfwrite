@@ -7,7 +7,9 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "validate": "node lib/validate.mjs"
+    "validate": "node lib/validate.mjs",
+    "lint:skills": "node scripts/skill-lint.mjs",
+    "check:run": "node scripts/run-integrity.mjs"
   },
   "dependencies": {
     "twitter-text": "^3.1.0",
