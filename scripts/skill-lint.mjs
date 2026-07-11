@@ -22,7 +22,7 @@ import { pathToFileURL } from 'node:url';
 import { THRESHOLDS } from '../lib/readability.mjs';
 
 export const SKILL_FILES = Object.freeze([
-  'selfwrite.md', 'selfresearch.md', 'selfinvestigate.md', 'selfpost.md',
+  'selfwrite.md', 'selfresearch.md', 'selfinvestigate.md',
 ]);
 
 const PATH_RE = /\b(?:scripts|lib|tools|config|sources)\/[A-Za-z0-9._/-]+\.[a-z]{2,5}\b/g;

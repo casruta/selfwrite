@@ -2,22 +2,19 @@
   "name": "selfwrite",
   "version": "0.2.0",
   "type": "module",
-  "description": "Self-improving writing skills for Claude Code (selfwrite, selfresearch, selfinvestigate, selfpost)",
+  "description": "Self-improving writing skills for Claude Code (selfwrite, selfresearch, selfinvestigate)",
   "private": true,
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "validate": "node lib/validate.mjs",
     "lint:skills": "node scripts/skill-lint.mjs",
     "check:run": "node scripts/run-integrity.mjs",
     "audit:run": "node scripts/run-audit.mjs"
   },
   "dependencies": {
-    "twitter-text": "^3.1.0",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
-    "playwright": "^1.59.1",
     "vitest": "^2.1.9"
   },
   "engines": {

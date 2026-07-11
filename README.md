@@ -4,7 +4,7 @@
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-blue)
 
-Selfwrite turns Claude Code into four time-boxed, self-correcting writing and research pipelines. `/selfwrite` iterates on any prose — drafting, scoring against a generated rubric, reverting damage — until it reads like natural, grade-12-accessible human writing. `/selfresearch` runs a cited academic research loop across Semantic Scholar, OpenAlex, and arXiv, tagging every claim and verifying every quote is a verbatim substring of its source. `/selfinvestigate` chases a thesis through FEC, SEC, court, and archive records. `/selfpost` drafts and posts to Twitter/X through your own browser. Deterministic Node validators keep the loops honest — run-ledger integrity, quote verification, and a Flesch-Kincaid readability gate — so no LLM grades its own homework. No API keys required for any of it (except whatever you already have for the backends they query).
+Selfwrite turns Claude Code into three time-boxed, self-correcting writing and research pipelines. `/selfwrite` iterates on any prose — drafting, scoring against a generated rubric, reverting damage — until it reads like natural, grade-12-accessible human writing. `/selfresearch` runs a cited academic research loop across Semantic Scholar, OpenAlex, and arXiv, tagging every claim and verifying every quote is a verbatim substring of its source. `/selfinvestigate` chases a thesis through FEC, SEC, court, and archive records. Deterministic Node validators keep the loops honest — run-ledger integrity, quote verification, and a Flesch-Kincaid readability gate — so no LLM grades its own homework. No API keys required for any of it (except whatever you already have for the backends they query).
 
 #### note: AI-text detectors evolve daily. Entire paragraphs sometimes get flagged because of a phrase currently over-used by various models. Finding 2-3 fitting synonyms is usually enough to break the pattern (and no, this paragraph was not written by this product).
 
@@ -15,29 +15,28 @@ Selfwrite turns Claude Code into four time-boxed, self-correcting writing and re
 | [`/selfwrite`](#selfwrite--prose-polish) | Rewrite prose through an iteration loop until it reads natural and passes AI detectors |
 | [`/selfresearch`](#selfresearch--cited-academic-research) | Time-boxed academic research pipeline that returns a cited literature review |
 | [`/selfinvestigate`](#selfinvestigate--thesis-driven-investigation) | Thesis-driven investigative pipeline across FEC, SEC, court, and news records |
-| [`/selfpost`](#selfpost--twitterx-posting) | Browser-driven Twitter/X posting via the Claude for Chrome extension |
 
 ## Install
 
 ```bash
 mkdir -p ~/.claude/skills
-cp selfwrite.md selfresearch.md selfinvestigate.md selfpost.md ~/.claude/skills/
+cp selfwrite.md selfresearch.md selfinvestigate.md ~/.claude/skills/
 ```
 
-Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Verify with `/selfwrite`, `/selfresearch`, `/selfinvestigate`, or `/selfpost` in any project.
+Requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code). Verify with `/selfwrite`, `/selfresearch`, or `/selfinvestigate` in any project.
 
 **Backend reference cards** (`sources/*.md`) are read at runtime by `/selfresearch` and `/selfinvestigate`. Either invoke the skills from this repo or copy `sources/` into whichever project you're working in.
 
-**Optional MCP upgrades** — still no keys required by default. The repo ships a project `.mcp.json` with Playwright MCP (Claude Code asks before starting it), which gives `/selfpost` selector-free unattended posting. Exa/Tavily (research-grade web search) and Zotero (citation library) are documented as opt-in in `sources/mcp-backends.md`; every skill falls back to the WebFetch cards when a server is absent.
+**Optional MCP upgrades** — still no keys required by default. Exa/Tavily (research-grade web search) and Zotero (citation library) are documented as opt-in in `sources/mcp-backends.md`; every skill falls back to the WebFetch cards when a server is absent.
 
-**Node helpers** for `/selfpost`:
+**Node validators** (used by every skill to audit its own runs):
 
 ```bash
-npm install      # deterministic char counting, queue CLI, preflight
+npm install      # yaml parsing for the kill-list, vitest
 npm test         # runs the validators vitest suite
 ```
 
-The skill runs without them but falls back to less-reliable Claude-interpreted logic.
+The skills run without them but fall back to less-reliable Claude-interpreted logic.
 
 ## Quick start
 
@@ -50,7 +49,7 @@ Then, inside any Claude Code session:
 ```
 /selfwrite "tighten this opinion column on housing policy" 30m   # → polished draft + every version kept
 /selfresearch "known failure modes of RLHF" 30m                  # → cited report.md, every quote verified
-/selfpost new "why small models win at tight tasks"              # → reviewable draft in queue/twitter/
+/selfinvestigate "Donor networks shifted to Trump by 2020" 2h    # → evidence-gated investigation
 ```
 
 Each skill asks a few intake questions (audience, purpose, register), then runs its loop until the
@@ -133,46 +132,15 @@ Queries FEC, OpenSecrets, SEC EDGAR, CourtListener, Wayback Machine, plus academ
 
 Stance quickguide: `investigate` for a neutral read, `prove` when you have strong priors and want efficient consolidation of supporting evidence, `disprove` to stress-test the thesis by hunting counter-evidence.
 
-### `/selfpost` (Twitter/X posting)
-
-```
-/selfpost new "topic" [tweet|thread]
-/selfpost list
-/selfpost run [--unattended]
-/selfpost show <id>
-/selfpost cancel <id>
-```
-
-Examples:
-
-```
-/selfpost new "why small models win at tight tasks"
-/selfpost new "the 2026 state of personal AI tooling" thread
-/selfpost list
-/selfpost run
-```
-
-`new` drafts a tweet or thread and saves it to `queue/twitter/<id>.md` with `status: draft`. You review the file, flip to `status: ready`, then `/selfpost run` posts flagged items via your logged-in Chrome browser. Up to 5 posts per run, 30-120s jitter between, 10-per-24-hours rolling cap. Session expiry, CAPTCHA, and rate limits all stop the run and mark the item `failed` with the error.
-
-**Requirements:**
-- [Claude for Chrome](https://claude.com/chrome) extension installed and connected
-- A Chrome profile logged into `x.com`
-- Node.js 20+ (for the helpers)
-- No Twitter API key, no OAuth, no scheduler
-
-Two posting tiers:
-1. **Tier 1 (default):** Interactive Chrome MCP. Two gates per tweet: an in-chat 'send' confirm and the Chrome extension's own Post-button approval. Use when you're at the keyboard.
-2. **Tier 2 (opt-in via `--unattended`):** Playwright on a persistent profile. No gates. Use for scheduled or batch posting when you've manually logged the profile in once. Requires `npx playwright install chromium chromium-headless-shell`.
-
 ## Shared patterns
 
-All four skills write to `runs/<skill>_<timestamp>/` with versioned outputs, a structured log, and a distilled `skill.md`. Deterministic validators keep the loops honest — quotes must be verbatim substrings of stored source text (`scripts/verify-quotes.mjs`), run ledgers must reconcile with the artifact (`scripts/run-integrity.mjs`), and reports must pass an audience-conditional grade-12 readability gate (`scripts/readability-check.mjs`); `npm test` exercises all of them against the real runs in `runs/`. Install the distillate to carry learnings into future runs:
+All three skills write to `runs/<skill>_<timestamp>/` with versioned outputs, a structured log, and a distilled `skill.md`. Deterministic validators keep the loops honest — quotes must be verbatim substrings of stored source text (`scripts/verify-quotes.mjs`), run ledgers must reconcile with the artifact (`scripts/run-integrity.mjs`), and reports must pass an audience-conditional grade-12 readability gate (`scripts/readability-check.mjs`); `npm test` exercises all of them against the real runs in `runs/`. Install the distillate to carry learnings into future runs:
 
 ```bash
 cp runs/<run-id>/skill.md ~/.claude/skills/<domain>.md
 ```
 
-Tips that apply to all four:
+Tips that apply to all three:
 
 - **Answer intake questions concretely.** "Skeptical CFO reading a one-pager" yields precise output; "general audience" yields vague output.
 - **Name a publication voice** at `/selfwrite` intake (Economist, Reuters, NYT News Analysis). Loads a lexicon that constrains word choice and sentence rhythm.
@@ -182,4 +150,4 @@ Tips that apply to all four:
 ## Requirements
 
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code)
-- For `/selfpost`: [Claude for Chrome](https://claude.com/chrome) extension, Chrome profile logged into x.com, Node.js 20+
+- Node.js 20+ (for the deterministic validators)

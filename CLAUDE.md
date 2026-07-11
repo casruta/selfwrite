@@ -1,20 +1,19 @@
 # selfwrite
 
-Prompt-based Claude Code skills (`/selfwrite`, `/selfresearch`, `/selfinvestigate`, `/selfpost`)
-plus the deterministic Node helpers they shell out to. The skills are the four root `.md` files;
+Prompt-based Claude Code skills (`/selfwrite`, `/selfresearch`, `/selfinvestigate`)
+plus the deterministic Node helpers they shell out to. The skills are the three root `.md` files;
 the helpers keep the loops honest so no LLM re-derives counts, similarity, or grade levels in-context.
 
 ## Map
 
-- `selfwrite.md` / `selfresearch.md` / `selfinvestigate.md` / `selfpost.md` — skill prompts
+- `selfwrite.md` / `selfresearch.md` / `selfinvestigate.md` — skill prompts
 - `lib/` — pure logic, error-as-value (nothing throws), no default exports
 - `scripts/` — thin CLIs over lib: `--json` flag, exit codes 0 = pass, 1 = fail, 2 = input error
   (exception: `near-dupes.mjs` is advisory-only and exits 0 on any successful run — pairs are
   merge/keep judgment calls for the skill, not failures)
 - `sources/` — backend reference cards read at runtime by the research skills
-- `config/` — `kill-list.yaml` (canonical AI-tell word list), Twitter selectors
+- `config/` — `kill-list.yaml` (canonical AI-tell word list)
 - `runs/` — real run artifacts; **read-only test fixtures, never rewrite them**
-- `queue/twitter/` — selfpost queue
 - `ANALYSIS.md` — the audit these invariants come from
 
 ## Invariants (enforced by scripts, verified by tests)
