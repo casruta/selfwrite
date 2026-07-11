@@ -4,7 +4,7 @@
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-blue)
 
-Four Claude Code skills for writing, research, investigation, and distribution. Each one runs a time-boxed, multi-agent pipeline that produces a sourced, cited, natural-sounding artifact. No API keys required for any of them (except whatever you already have for the backends they query).
+Selfwrite turns Claude Code into four time-boxed, self-correcting writing and research pipelines. `/selfwrite` iterates on any prose — drafting, scoring against a generated rubric, reverting damage — until it reads like natural, grade-12-accessible human writing. `/selfresearch` runs a cited academic research loop across Semantic Scholar, OpenAlex, and arXiv, tagging every claim and verifying every quote is a verbatim substring of its source. `/selfinvestigate` chases a thesis through FEC, SEC, court, and archive records. `/selfpost` drafts and posts to Twitter/X through your own browser. Deterministic Node validators keep the loops honest — run-ledger integrity, quote verification, and a Flesch-Kincaid readability gate — so no LLM grades its own homework. No API keys required for any of it (except whatever you already have for the backends they query).
 
 #### note: AI-text detectors evolve daily. Entire paragraphs sometimes get flagged because of a phrase currently over-used by various models. Finding 2-3 fitting synonyms is usually enough to break the pattern (and no, this paragraph was not written by this product).
 
@@ -38,6 +38,28 @@ npm test         # runs the validators vitest suite
 ```
 
 The skill runs without them but falls back to less-reliable Claude-interpreted logic.
+
+## Quick start
+
+```bash
+mkdir -p ~/.claude/skills && cp self*.md ~/.claude/skills/ && npm install
+```
+
+Then, inside any Claude Code session:
+
+```
+/selfwrite "tighten this opinion column on housing policy" 30m   # → polished draft + every version kept
+/selfresearch "known failure modes of RLHF" 30m                  # → cited report.md, every quote verified
+/selfpost new "why small models win at tight tasks"              # → reviewable draft in queue/twitter/
+```
+
+Each skill asks a few intake questions (audience, purpose, register), then runs its loop until the
+time budget is spent. Audit any finished run with one command:
+
+```bash
+node scripts/run-audit.mjs runs/<run-dir>     # ledger + quotes + readability + dupes, one verdict
+npm test                                      # validator suite (real runs/ are the fixtures)
+```
 
 ## Usage
 
