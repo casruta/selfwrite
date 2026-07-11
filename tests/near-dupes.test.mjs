@@ -63,3 +63,10 @@ describe('comparisonText', () => {
     expect(comparisonText({ name: 'X', aliases: ['Y', 'Z'], other: 5 }, ['name', 'aliases', 'missing'])).toBe('X Y Z');
   });
 });
+
+describe('review regressions', () => {
+  it('object-map keys win over a record-level id field', () => {
+    const { records } = parseRecords('{"S001":{"id":"custom","t":"x"},"S002":{"id":"custom","t":"y"}}', false);
+    expect(records.map((r) => r.id).sort()).toEqual(['S001', 'S002']);
+  });
+});

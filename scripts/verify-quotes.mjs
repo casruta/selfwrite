@@ -18,26 +18,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { verifyQuotesFile } from '../lib/quotes.mjs';
-
-function parseArgs(argv) {
-  const positional = [];
-  const flags = {};
-  for (const a of argv.slice(2)) {
-    if (a.startsWith('--')) {
-      const [k, v] = a.slice(2).split('=');
-      flags[k] = v === undefined ? true : v;
-    } else {
-      positional.push(a);
-    }
-  }
-  return { positional, flags };
-}
-
-function fail(msg, json) {
-  if (json) process.stdout.write(JSON.stringify({ ok: false, error: msg }) + '\n');
-  else process.stderr.write(`error: ${msg}\n`);
-  process.exit(2);
-}
+import { parseArgs, fail } from '../lib/cli.mjs';
 
 const { positional, flags } = parseArgs(process.argv);
 const json = flags.json === true;

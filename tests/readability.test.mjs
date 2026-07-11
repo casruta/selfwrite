@@ -164,3 +164,15 @@ describe('real fixture: runs/2026-04-01_011613/versions/v5-final.md', () => {
     expect(r.word_count).toBeGreaterThan(300);
   });
 });
+
+describe('review regressions', () => {
+  it('flags the comma-less "not X but Y" pivot', () => {
+    const r = analyzeReadability("This isn't just a policy change but a fundamental shift in strategy.");
+    expect(r.negation_antithesis.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('still ignores ordinary negation without a pivot', () => {
+    const r = analyzeReadability('The committee did not approve the motion and the meeting ended early.');
+    expect(r.negation_antithesis).toHaveLength(0);
+  });
+});

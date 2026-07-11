@@ -1460,7 +1460,7 @@ Mark the substitution in `trace.md`. Note the credibility impact (secondary web 
 
 ### Actor dedup failure (same person, different names)
 
-Run `node scripts/near-dupes.mjs actors.json --fields=name,aliases --threshold=0.6 --id-field=id --json` before the actor-map builder runs (mandatory, not a fallback). The coordinator proposes merges from the output for user approval; approved merges land in `actors.json`, logged as a `dedup_merge_proposal` entry in `missing_evidence.md`, before `actor_map.json` is built.
+Run `node scripts/near-dupes.mjs actors.json --fields=canonical_name,aliases --threshold=0.6 --id-field=id --json` before the actor-map builder runs (mandatory, not a fallback). The coordinator proposes merges from the output for user approval; approved merges land in `actors.json`, logged as a `dedup_merge_proposal` entry in `missing_evidence.md`, before `actor_map.json` is built.
 
 ### Contradicting evidence outweighs supporting evidence
 

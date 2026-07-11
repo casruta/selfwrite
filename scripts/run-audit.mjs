@@ -24,31 +24,13 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
-import { checkRunConsistency, resolveArtifact } from '../lib/run-integrity.mjs';
+import { checkRunConsistency } from '../lib/run-integrity.mjs';
 import { verifyQuotesFile } from '../lib/quotes.mjs';
 import { analyzeReadability, AUDIENCES } from '../lib/readability.mjs';
 import { nearDupePairs, parseRecords } from '../lib/near-dupes.mjs';
-
-function parseArgs(argv) {
-  const positional = [];
-  const flags = {};
-  for (const a of argv.slice(2)) {
-    if (a.startsWith('--')) {
-      const [k, v] = a.slice(2).split('=');
-      flags[k] = v === undefined ? true : v;
-    } else {
-      positional.push(a);
-    }
-  }
-  return { positional, flags };
-}
-
-function fail(msg, json) {
-  if (json) process.stdout.write(JSON.stringify({ ok: false, error: msg }) + '\n');
-  else process.stderr.write(`error: ${msg}\n`);
-  process.exit(2);
-}
+import { parseArgs, fail } from '../lib/cli.mjs';
 
 const { positional, flags } = parseArgs(process.argv);
 const json = flags.json === true;
@@ -74,18 +56,23 @@ const sourcesPath = join(runDir, 'sources.json');
 if (existsSync(quotesPath) && existsSync(sourcesPath)) {
   const quotes = verifyQuotesFile(readFileSync(quotesPath, 'utf8'), readFileSync(sourcesPath, 'utf8'));
   report.sections.quotes = quotes;
-  if (!quotes.pass) report.errors += quotes.fabricated.length + quotes.parse_errors.length;
+  if (!quotes.ok) {
+    // unparseable sources.json means quotes are unverifiable — that is an
+    // error, not a clean pass
+    report.errors += 1;
+  } else if (!quotes.pass) {
+    report.errors += quotes.fabricated.length + quotes.parse_errors.length;
+  }
 }
 
-// 3. readability on the resolved artifact (advisory at audit level)
-const artifactPath = resolveArtifact(
-  runDir,
-  existsSync(join(runDir, 'state.json')) ? JSON.parse(readFileSync(join(runDir, 'state.json'), 'utf8')) : null,
-  typeof flags.artifact === 'string' ? flags.artifact : null
-);
-if (artifactPath) {
+// 3. readability on the resolved artifact (advisory at audit level).
+// checkRunConsistency already resolved the artifact — reuse it instead of
+// re-reading state.json (also avoids crashing on malformed state.json).
+const artifactPath = integrity.artifact ? join(runDir.replace(/\/+$/, ''), integrity.artifact) : null;
+if (artifactPath && existsSync(artifactPath)) {
   let killList = null;
-  const killListPath = 'config/kill-list.yaml';
+  // resolve relative to this script so the audit works from any cwd
+  const killListPath = fileURLToPath(new URL('../config/kill-list.yaml', import.meta.url));
   if (existsSync(killListPath)) {
     try { killList = parseYaml(readFileSync(killListPath, 'utf8')); } catch { /* advisory */ }
   }
@@ -107,15 +94,21 @@ if (artifactPath) {
 // 4. near-dupes (advisory; only when the record files exist)
 const dupeTargets = [
   { file: 'sources.json', fields: ['title', 'abstract'], threshold: 0.85 },
-  { file: 'actors.json', fields: ['name', 'aliases'], threshold: 0.6 },
+  { file: 'actors.json', fields: ['canonical_name', 'aliases'], threshold: 0.6 },
 ];
 for (const t of dupeTargets) {
   const p = join(runDir, t.file);
   if (!existsSync(p)) continue;
-  const { records } = parseRecords(readFileSync(p, 'utf8'), false);
-  if (!records) continue;
+  const key = `near_dupes_${t.file.replace('.json', '')}`;
+  const { records, error } = parseRecords(readFileSync(p, 'utf8'), false);
+  if (!records) {
+    // an unparseable record file must not vanish from the report silently
+    report.sections[key] = { ok: false, error };
+    report.warnings += 1;
+    continue;
+  }
   const dupes = nearDupePairs(records, { fields: t.fields, threshold: t.threshold });
-  report.sections[`near_dupes_${t.file.replace('.json', '')}`] = dupes;
+  report.sections[key] = dupes;
   report.warnings += dupes.count;
 }
 
@@ -135,7 +128,9 @@ if (json) {
     console.log(`  readability (${r.audience}): FK ${r.fk_grade}, avg ${r.avg_sentence_words}w, ${r.violations.length} violations, ${r.negation_antithesis.length} negation-antithesis, ${r.undefined_acronyms.length} undefined acronyms`);
   }
   for (const [k, v] of Object.entries(report.sections)) {
-    if (k.startsWith('near_dupes_') && v.count > 0) console.log(`  ${k}: ${v.count} candidate pairs`);
+    if (!k.startsWith('near_dupes_')) continue;
+    if (v.ok === false) console.log(`  ${k}: UNPARSEABLE — ${v.error}`);
+    else if (v.count > 0) console.log(`  ${k}: ${v.count} candidate pairs`);
   }
   console.log(`errors: ${report.errors}   warnings: ${report.warnings}   ${report.pass ? 'PASS' : 'FAIL'}`);
 }

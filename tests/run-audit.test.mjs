@@ -62,3 +62,12 @@ describe('run-audit CLI', () => {
     expect(runAudit(['tests/fixtures/runs/clean-v2', '--audience=child']).code).toBe(2);
   });
 });
+
+describe('review regressions', () => {
+  it('fails when sources.json is unparseable instead of passing vacuously', () => {
+    const { code, report } = runAudit(['tests/fixtures/runs/broken-sources']);
+    expect(code).toBe(1);
+    expect(report.sections.quotes.ok).toBe(false);
+    expect(report.errors).toBeGreaterThanOrEqual(1);
+  });
+});

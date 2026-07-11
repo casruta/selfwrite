@@ -115,3 +115,26 @@ describe('schema detection and TSV parsing', () => {
     expect(p.rows).toHaveLength(1);
   });
 });
+
+describe('review regressions', () => {
+  it('accepts a trailing slash on the run dir without leaking full paths', () => {
+    const r = checkRunConsistency('tests/fixtures/runs/clean-v2/');
+    expect(r.artifact).toBe('draft.md');
+  });
+
+  it('does not demand a signal override for a plateau the run recovered from', () => {
+    const r = checkRunConsistency('tests/fixtures/runs/plateau-recovered');
+    expect(r.checks.find((c) => c.id === 'signal_override_missing')).toBeUndefined();
+  });
+
+  it('resolves report.md as the artifact in a multi-file long-form run root', () => {
+    const r = checkRunConsistency('tests/fixtures/runs/longform');
+    expect(r.artifact).toBe('report.md');
+  });
+
+  it('preflight reports unverifiable when the ledger has rows but no size info', () => {
+    const p = preflightCheck('tests/fixtures/runs/plateau-recovered');
+    expect(p.valid).toBe(true);
+    expect(p.unverifiable).toBe(true);
+  });
+});

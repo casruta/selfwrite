@@ -139,3 +139,17 @@ describe('verifyQuotesFile', () => {
     expect(r.error).toMatch(/parse error/);
   });
 });
+
+describe('review regressions', () => {
+  it('a short verbatim quote is verified whole, never dropped as too-short', () => {
+    const src = { abstract: 'The jury found the defendant not guilty on all counts.' };
+    expect(verifyQuote({ quote_text: 'not guilty' }, src).verbatim).toBe(true);
+  });
+
+  it('a short NON-verbatim quote still fails as not_substring', () => {
+    const src = { abstract: 'The jury found the defendant not guilty on all counts.' };
+    const r = verifyQuote({ quote_text: 'very guilty' }, src);
+    expect(r.verbatim).toBe(false);
+    expect(r.reason).toBe('not_substring');
+  });
+});

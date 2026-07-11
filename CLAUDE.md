@@ -9,6 +9,8 @@ the helpers keep the loops honest so no LLM re-derives counts, similarity, or gr
 - `selfwrite.md` / `selfresearch.md` / `selfinvestigate.md` / `selfpost.md` — skill prompts
 - `lib/` — pure logic, error-as-value (nothing throws), no default exports
 - `scripts/` — thin CLIs over lib: `--json` flag, exit codes 0 = pass, 1 = fail, 2 = input error
+  (exception: `near-dupes.mjs` is advisory-only and exits 0 on any successful run — pairs are
+  merge/keep judgment calls for the skill, not failures)
 - `sources/` — backend reference cards read at runtime by the research skills
 - `config/` — `kill-list.yaml` (canonical AI-tell word list), Twitter selectors
 - `runs/` — real run artifacts; **read-only test fixtures, never rewrite them**
@@ -27,7 +29,8 @@ the helpers keep the loops honest so no LLM re-derives counts, similarity, or gr
 - **Readability gate:** FK <= 12.0 default (<= 10.0 general audience), avg sentence <= 20 words (17),
   no sentence > 35 words; `expert` audience exempt from the cap, stats still logged.
   `node scripts/readability-check.mjs <file> --audience=... --kill-list=config/kill-list.yaml`.
-  Thresholds live in `lib/readability.mjs` `THRESHOLDS`; prose must match them (lint-enforced).
+  Thresholds live in `lib/readability.mjs` `THRESHOLDS`; FK numbers stated in skill prose must
+  match them (lint-enforced; the sentence-length numbers are convention, not lint-checked).
 - **Shared blocks:** `<!-- SHARED:* -->` sections must stay byte-identical across skill files —
   `npm run lint:skills` enforces this, plus no phantom paths and no banned legacy phrases.
 

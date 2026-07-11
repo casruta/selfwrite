@@ -16,26 +16,7 @@
 //   2   unreadable run dir / arg error
 
 import { checkRunConsistency, preflightCheck } from '../lib/run-integrity.mjs';
-
-function parseArgs(argv) {
-  const positional = [];
-  const flags = {};
-  for (const a of argv.slice(2)) {
-    if (a.startsWith('--')) {
-      const [k, v] = a.slice(2).split('=');
-      flags[k] = v === undefined ? true : v;
-    } else {
-      positional.push(a);
-    }
-  }
-  return { positional, flags };
-}
-
-function fail(msg, json) {
-  if (json) process.stdout.write(JSON.stringify({ ok: false, error: msg }) + '\n');
-  else process.stderr.write(`error: ${msg}\n`);
-  process.exit(2);
-}
+import { parseArgs, fail } from '../lib/cli.mjs';
 
 const { positional, flags } = parseArgs(process.argv);
 const json = flags.json === true;
@@ -53,6 +34,7 @@ if (flags.preflight === true) {
   } else {
     console.log(`artifact: ${r.artifact}   lines: ${r.actual_lines}${r.expected_lines !== null ? ` (logged: ${r.expected_lines})` : ''}`);
     for (const m of r.mismatches) console.log(`  MISMATCH: ${m}`);
+    if (r.unverifiable) console.log('  WARNING: ledger has rows but logs no total_lines/artifact_sha256 — preflight cannot actually verify this run');
     console.log(r.valid ? 'preflight: PASS' : 'preflight: FAIL — artifact changed outside the logged loop');
   }
   process.exit(r.valid ? 0 : 1);

@@ -71,9 +71,12 @@ export function lintSkills(rootDir) {
       sharedBlocks.get(m[1]).push(entry);
     }
 
-    // 3a. budget-stop percentages (only on lines that talk about budget)
+    // 3a. budget-stop percentages — scoped to the SHARED:budget-stop
+    // vocabulary ("phase/wave/iteration budget"), not any line containing
+    // the bare word "budget", so unrelated thresholds (e.g. a stage
+    // edit-loop overrun) never collide with the one true budget-stop figure
     for (let i = 0; i < lines.length; i++) {
-      if (!/budget/i.test(lines[i])) continue;
+      if (!/(phase|wave|iteration)[ _]budget/i.test(lines[i])) continue;
       for (const m of lines[i].matchAll(/\b(1\d\d)%/g)) {
         const pct = m[1];
         if (!budgetPercents.has(pct)) budgetPercents.set(pct, []);
@@ -86,7 +89,10 @@ export function lintSkills(rootDir) {
       Object.values(THRESHOLDS).filter(Boolean).map((t) => t.fk)
     );
     for (let i = 0; i < lines.length; i++) {
-      for (const m of lines[i].matchAll(/(?:FK|Flesch[-–]Kincaid)[^0-9\n]{0,40}?(\d+(?:\.\d+)?)/gi)) {
+      // require a comparator/assignment token before the number so years,
+      // section numbers, and other digits near "FK" are not misread as
+      // asserted thresholds
+      for (const m of lines[i].matchAll(/(?:FK|Flesch[-–]Kincaid)[^0-9\n]{0,40}?(?:<=|≤|>=|≥|<|>|:)\s*(\d+(?:\.\d+)?)/gi)) {
         const num = Number(m[1]);
         if (!validFk.has(num)) {
           violations.push({

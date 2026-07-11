@@ -22,7 +22,9 @@ process.stdin.on('end', () => {
   }
   const cwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   try {
-    execSync('npm run --silent lint:skills', { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    // invoke node directly: this hook blocks every skill-file edit, and npm's
+    // startup overhead (~130ms measured) buys nothing here
+    execSync('node scripts/skill-lint.mjs', { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
     process.exit(0);
   } catch (err) {
     process.stderr.write(
