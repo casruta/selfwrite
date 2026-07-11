@@ -42,7 +42,7 @@ describe('lintSkills — bad-skills fixture', () => {
 });
 
 // Completion gate: un-skip once P2-P4 skill-file edits have landed.
-describe.skip('lintSkills — live repo (P5 completion gate)', () => {
+describe('lintSkills — live repo (P5 completion gate)', () => {
   it('the real skill files pass the lint', () => {
     const r = lintSkills('.');
     expect(r.filesChecked.length).toBeGreaterThanOrEqual(4);
