@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "task": "Rewrite README.md professionally into topical paragraphs",
+  "audience": "default",
+  "artifact": "draft.md",
+  "artifact_line_count": 66,
+  "artifact_sha256": "01540b2a9ebde97406d4cc64fdadfcc9c3bab818933a2d7f5c47d83838d78583",
+  "current_iteration": 5,
+  "kept_count": 5,
+  "reverted_count": 0
+}

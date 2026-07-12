@@ -6,13 +6,13 @@
 
 Selfwrite turns Claude Code into three time-boxed, self-correcting writing and research pipelines. One polishes prose, one produces cited academic research, and one builds investigations from public records. Each pipeline is a single prompt file backed by small deterministic Node validators, so no LLM (large language model) grades its own homework. The validators re-derive counts, similarity, and grade levels outside the model, and no API keys are required by default.
 
+*A note on AI-text detectors: they evolve daily, and a whole paragraph can get flagged over one phrase that current models overuse. Swapping in two or three fitting synonyms is usually enough to break the pattern — and no, this note was not written by the product.*
+
 ## The three skills
 
 ### `/selfwrite` — prose polish
 
-Point `/selfwrite` at any prose — an opinion column, a memo, a README — and give it a task description and a time budget. Budgets are written `Nm` or `Nh`, with a 10-minute floor. At intake the skill asks a few questions about audience, purpose, and register, then generates a scoring rubric. From there it iterates THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT until the budget runs out. A score agent with fresh context grades every revision, and reviews hunt AI-tell phrasing against a kill list, so the finished piece reads like natural human writing. The loop keeps a version when its score improves and reverts one that slips, and every version stays on disk under `versions/`, so an aggressive edit can never destroy work. Simple-rewrite mode polishes what is already on the page, while deep-rewrite mode runs a research tree to surface missing evidence and counterarguments. Naming a publication voice at intake (Economist, Reuters, NYT News Analysis) loads a lexicon that constrains word choice and sentence rhythm. Allow 15 to 30 minutes for quick edits, 45 minutes to 2 hours for full rewrites, and 1 to 6 hours when the piece needs new evidence.
-
-*A note on AI-text detectors: they evolve daily, and a whole paragraph can get flagged over one phrase that current models overuse. Swapping in two or three fitting synonyms is usually enough to break the pattern — and no, this note was not written by the product.*
+Point `/selfwrite` at any prose — an opinion column, a memo, a README — and give it a task description and a time budget. Budgets are written `Nm` or `Nh`, with a 10-minute floor. At intake the skill asks a few questions about audience, purpose, and register, then generates a scoring rubric. From there it iterates THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT until the budget runs out. A score agent with fresh context grades every revision. The loop keeps a version when its score improves and reverts one that slips, and every version stays on disk under `versions/`, so an aggressive edit can never destroy work. Simple-rewrite mode polishes what is already on the page, while deep-rewrite mode runs a research tree to surface missing evidence and counterarguments. Naming a publication voice at intake (Economist, Reuters, NYT News Analysis) loads a lexicon that constrains word choice and sentence rhythm. Budget 15 to 30 minutes for quick edits, 45 minutes to 2 hours for full rewrites, and 1 to 6 hours when the piece needs new evidence.
 
 ### `/selfresearch` — cited academic research
 
@@ -32,7 +32,7 @@ cp selfwrite.md selfresearch.md selfinvestigate.md ~/.claude/skills/
 npm install
 ```
 
-The research skills read backend reference cards from `sources/` at runtime, so run them from this repo or copy `sources/` into your working project. The skills still function without the npm dependencies, though they fall back to less reliable model-interpreted checks. Verify the install by typing `/selfwrite`, `/selfresearch`, or `/selfinvestigate` in any Claude Code session. Then invoke a skill with a task and a time budget:
+The research skills read backend reference cards from `sources/` at runtime, so run them from this repo or copy `sources/` into your working project. Skills still function without the npm dependencies, though they fall back to less reliable model-interpreted checks. Verify the install by typing `/selfwrite`, `/selfresearch`, or `/selfinvestigate` in any Claude Code session. Then invoke a skill with a task and a time budget:
 
 ```
 /selfwrite "tighten this opinion column on housing policy" 30m
