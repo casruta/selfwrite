@@ -1,0 +1,11 @@
+{
+  "schema_version": 2,
+  "task": "Rewrite CLAUDE.md to summarize what the tool does, how it does it, and how to use it",
+  "audience": "default",
+  "artifact": "draft.md",
+  "artifact_line_count": 72,
+  "artifact_sha256": "a2412905f70de7513519330b156f213bfb9ad083cd2c0bedade8bd46699d7035",
+  "current_iteration": 5,
+  "kept_count": 4,
+  "reverted_count": 1
+}

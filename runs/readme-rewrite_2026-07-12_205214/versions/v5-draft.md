@@ -16,7 +16,7 @@ Point `/selfwrite` at any prose — an opinion column, a memo, a README — and 
 
 ### `/selfresearch` — cited academic research
 
-Give `/selfresearch` a research question and at least 15 minutes, and it returns a cited report. Depending on the budget, that can be an evidence brief, a focused review, or a full literature survey. The loop runs PLAN → ITERATE → SYNTHESIZE → VERIFY → SUMMARIZE across Semantic Scholar, OpenAlex, and arXiv, with an optional web backend. Every claim carries one of four tier tags. SRC marks a claim backed by one quote from one source, and SYN a conclusion drawn across several sources. INF flags a stated reasoning step, and UNV the rare claim no retrieved source could confirm. Each SRC tag anchors to a quote extracted from a stored source. VERIFY completes only after every quote checks out as a verbatim substring of its source text, and a fabricated citation fails the run with no appeal. Plan on 20 to 30 minutes for an evidence brief and 30 to 60 for a focused report. A literature review takes one to two hours; an exhaustive survey takes longer.
+Give `/selfresearch` a research question and at least 15 minutes, and it returns a cited report. Depending on the budget, that can be an evidence brief, a focused review, or a full literature survey. The loop runs PLAN → ITERATE → SYNTHESIZE → VERIFY → SUMMARIZE across Semantic Scholar, OpenAlex, and arXiv, with an optional web backend. Every claim carries one of four tier tags. SRC marks a claim backed by one quote from one source, and SYN a conclusion drawn across several sources. INF flags a stated reasoning step, and UNV the rare claim no retrieved source could confirm. Each tag anchors to a quote extracted from a stored source. VERIFY completes only after every quote checks out as a verbatim substring of its source text, and a fabricated citation fails the run with no appeal. Plan on 20 to 30 minutes for an evidence brief and 30 to 60 for a focused report. A literature review takes one to two hours; an exhaustive survey takes longer.
 
 ### `/selfinvestigate` — thesis-driven investigation
 
@@ -32,7 +32,7 @@ cp selfwrite.md selfresearch.md selfinvestigate.md ~/.claude/skills/
 npm install
 ```
 
-The research skills read backend reference cards from `sources/` at runtime, so run them from this repo or copy `sources/` into your working project. The validators are hard gates, not options; `npm install` supplies only the kill-list parser and the test suite, and the rest runs on Node alone. Verify the install by typing `/selfwrite`, `/selfresearch`, or `/selfinvestigate` in any Claude Code session. Then invoke a skill with a task and a time budget:
+The research skills read backend reference cards from `sources/` at runtime, so run them from this repo or copy `sources/` into your working project. The skills still function without the npm dependencies, though they fall back to less reliable model-interpreted checks. Verify the install by typing `/selfwrite`, `/selfresearch`, or `/selfinvestigate` in any Claude Code session. Then invoke a skill with a task and a time budget:
 
 ```
 /selfwrite "tighten this opinion column on housing policy" 30m

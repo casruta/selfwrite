@@ -6,7 +6,7 @@ Selfwrite is three prompt-based Claude Code skills backed by small deterministic
 
 `/selfwrite` polishes prose. It asks intake questions (audience, purpose, register), generates a scoring rubric, then iterates THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT until the time budget runs out. A fresh-context score agent grades each revision; the loop keeps the version when the score improves and reverts it when it does not. Every version stays on disk under `versions/`.
 
-`/selfresearch` answers a research question with cited academic sources. It runs PLAN → ITERATE → SYNTHESIZE → VERIFY → SUMMARIZE across Semantic Scholar, OpenAlex, and arXiv. Every claim carries a tier tag (SRC, SYN, INF, UNV), and each SRC tag anchors to a quote extracted from a stored source. VERIFY completes only after every quote checks out as a verbatim substring of its source text.
+`/selfresearch` answers a research question with cited academic sources. It runs PLAN → ITERATE → SYNTHESIZE → VERIFY → SUMMARIZE across Semantic Scholar, OpenAlex, and arXiv. Every claim carries a tier tag (SRC, SYN, INF, UNV) anchored to a quote extracted from a stored source. VERIFY completes only after every quote checks out as a verbatim substring of its source text.
 
 `/selfinvestigate` chases a thesis through public records such as FEC filings, SEC EDGAR, and court archives. It runs SCOPE → QUESTION WEB → RESEARCH → CONNECT → WRITE. A mandatory thesis-assessment gate fires before WRITE: the user sees the evidence for and against the thesis and confirms the direction, so a `prove` stance cannot ship a one-sided brief.
 

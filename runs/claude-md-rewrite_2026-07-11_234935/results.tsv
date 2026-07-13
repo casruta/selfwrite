@@ -1,0 +1,7 @@
+# schema_version: 2
+iteration	target	hypothesis	composite_before	composite_after	delta	max_single_dim_drop	decision	reason	mode	research_findings	research_approved	reader_annotations	voice_audit_count	tree_depth	tree_nodes	tree_contradictions	tree_gated_count	total_lines
+1	draft.md	full restructure to summary-first doc	6.80	7.70	0.90	1	keep	structure+usage gains; gate fail localized to Map list	regular	0	-	0	0	0	0	0	0	86
+2	draft.md	readability repair: capitalize Map bullet openings	7.70	8.90	1.20	0	keep	gate passes (FK 9.42, max 35); no content lost	regular	0	-	0	0	0	0	0	0	87
+3	draft.md	cut duplicate command fences from invariants	8.90	9.00	0.10	0	keep	14 lines cut, no information lost, gate still passes	regular	0	-	0	0	0	0	0	0	73
+4	draft.md	replace loop paragraphs with table	9.00	8.40	-0.60	3	revert	table drops backends and loop mechanics; usefulness -3	regular	0	-	0	0	0	0	0	0	73
+5	draft.md	define acronyms, add duration minimums, fix list split	9.00	9.20	0.20	0	keep	verified micro-fixes; gate passes FK 9.77	regular	0	-	0	0	0	0	0	0	72

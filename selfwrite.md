@@ -201,11 +201,9 @@ Not all human writing patterns are inappropriate. Some make text sound more natu
 
 ## Lexicon System
 
-A lexicon is a curated vocabulary and phrasing profile tied to a specific publication or journalism style. It solves the core word-choice problem: a word can be technically correct but wrong for the voice. "Uptick" is fine at the Wall Street Journal; it's wrong in a StatsCan report. The lexicon tells the Voice Auditor what to consider natural and tells the coordinator what words to reach for during REVISE.
+A lexicon is a curated vocabulary and phrasing profile tied to a specific publication or journalism style. It solves the core word-choice problem: a word can be technically correct but wrong for the voice. "Uptick" is fine at the Wall Street Journal; it's wrong in a StatsCan report. The lexicon tells the Voice Auditor what to consider natural and tells the coordinator what words to reach for during REVISE — shifting word choices away from the AI-default toward a specific human voice, predictable the way a Globe and Mail columnist is predictable rather than the way a machine is.
 
-### Why Lexicons Work Against AI Detection
-
-AI detectors measure how consistently text selects the most statistically probable word at each position. Clean AI output is detectable because it *always* picks the highest-probability token. Random synonym swaps break that pattern but introduce unnatural phrasing. A lexicon solves both problems: it shifts word choices away from the AI-default *toward* a specific human voice. The result is statistically varied (defeating detectors) and naturally consistent (sounding like a real writer). The text becomes predictable in a *human* way — the way a Globe and Mail columnist is predictable — rather than predictable in a machine way.
+**Phrase-frequency cap (all lexicons):** preferred multi-word phrases are seasoning, not scaffolding. Any one preferred phrase appears at most once per piece, and at most one paragraph in the piece may *open* with a lexicon move. A draft whose paragraphs each open on a signature phrase has replaced the AI template with a lexicon template — same tell, different wardrobe.
 
 ### Lexicon Structure
 
@@ -267,7 +265,7 @@ Each lexicon defines five components:
 
 | Component | Content |
 |-----------|---------|
-| **Preferred vocabulary** | "look," "listen," "here's the deal," "bluntly," "frankly," "the truth is," "let's be honest," "the real question," "nonsense," "overdue," "long past time," "misses the point," "gets it backward," "deserves better" |
+| **Preferred vocabulary** | "look," "listen," "bluntly," "frankly," "the truth is," "nonsense," "overdue," "long past time," "misses the point," "gets it backward," "deserves better" |
 | **Avoided vocabulary** | "facilitate," "utilize," "synergize," "leverage," "paradigm," "holistic," "it is important to note," "it should be noted," "one might argue" |
 | **Phrase patterns** | "[Strong claim]. Full stop." · "Let me be direct: [thesis]." · "[Common belief]? [Blunt rebuttal]." · "This isn't about [deflection]. It's about [real issue]." · "The answer is simpler than it looks: [answer]." |
 | **Sentence rhythm** | 5-18 words typical. Punchy and staccato. Sentence fragments for emphasis. One-word paragraphs allowed. Rhythm drives argument, not just clarity. |
@@ -754,11 +752,7 @@ One row per phase (A, B, C, D, E, plus a final `total` row).
 
 ## Prompt Decomposition (Agentic Intake Workflow)
 
-Grounded in IBM's agentic AI pattern (**Plan → Act → Observe → Adjust** with a final **Reflect** pass), this phase turns the user's raw request into a sequence of smaller sub-prompts executed sequentially. Each sub-prompt inherits context from the prior one. The chain's final output becomes the v0 baseline for the iteration loop. The point is to stop treating "write a 2000-word financial report" as a single inference and start treating it as a plan.
-
-### Why This Exists
-
-A one-shot generation compresses every reasoning step into one inference. Decomposition forces the model to reason explicitly about each sub-task, surface its assumptions, and let the user correct course before investing tokens in a full draft. It also makes the run auditable: you can see *why* v0 looks the way it does, not just what it says. This phase replaces the black-box "generate a draft" step with a transparent chain the user can edit mid-run and the tool can learn from across runs.
+Grounded in IBM's agentic AI pattern (**Plan → Act → Observe → Adjust** with a final **Reflect** pass), this phase turns the user's raw request into a sequence of smaller sub-prompts executed sequentially. Each sub-prompt inherits context from the prior one. The chain's final output becomes the v0 baseline for the iteration loop. The point is to stop treating "write a 2000-word financial report" as a single inference and start treating it as a plan — an auditable one the user can edit mid-run, showing *why* v0 looks the way it does.
 
 ### When It Runs
 
@@ -1203,7 +1197,7 @@ Log the result. Check convergence signals. Decide what to do next.
 - (Deep rewrite only) Research tree summary: max depth reached, total node count, any contradictions surfaced, Dependency Verifier invoked yes/no, findings surfaced vs. gated, user's approval/rejection of each surfaced finding, and how approved findings were incorporated
 
 **2. Log to `results.tsv`** (structured):
-Append one row: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}\t{reader_annotations}\t{voice_audit_count}\t{tree_depth}\t{tree_nodes}\t{tree_contradictions}\t{tree_gated_count}`
+Append one row filling all 19 columns of the v2 header from Setup, in header order: `{iteration}\t{target}\t{hypothesis_summary}\t{composite_before}\t{composite_after}\t{delta}\t{max_single_dim_drop}\t{keep|revert}\t{one-line reason}\t{mode}\t{research_findings|none}\t{approved_numbers|none}\t{reader_annotations}\t{voice_audit_count}\t{tree_depth}\t{tree_nodes}\t{tree_contradictions}\t{tree_gated_count}\t{total_lines}`
 
 **2a. Log the research tree** (deep rewrite only):
 Append to `research/findings.md`:
@@ -1371,21 +1365,22 @@ Three independent agents review every draft during the REVIEW step. Each runs as
 - [Para N]: N hedges in M sentences: "[list]"
 ```
 
-**AI-Tell Pattern Catalog** (check for all of these every audit). `node scripts/readability-check.mjs` emits candidate line numbers for the negation-antithesis and tricolon-burst rows below (`negation_antithesis`, `tricolon_paragraphs` fields) — it only flags candidates; the Voice Auditor confirms or dismisses each one:
+**AI-Tell Pattern Catalog** (check for all of these every audit). `node scripts/readability-check.mjs` emits candidate line numbers for the negation-antithesis and tricolon-burst rows below (`negation_antithesis`, `tricolon_paragraphs` fields); the Readability Gate (Adversarial Scoring Protocol, safeguard #5) governs how each candidate must be handled:
 
 | Pattern | Description | Example |
 |---------|-------------|---------|
 | Negation-antithesis | "It's not X, it's Y" / "This isn't about X. It's about Y" used as a rhetorical pivot. Flag ANY occurrence in a kicker or nut graph; 2+ occurrences elsewhere. | "This isn't coincidence. It's a pattern." → state the claim directly: "The pattern recurs across five separate cycles." |
 | Tricolon burst | A single paragraph with 3+ consecutive short parallel clauses — flag regardless of whether the "Sentence template repetition" 3-in-5-paragraphs threshold below is also met. | "This isn't coincidence. It's a pattern. And the pattern has consequences." → cut to one claim or break the rhythm. |
-| Kill-list overuse | Kill-list words are flagged only when the same word appears 3+ times in the artifact (overuse pattern), not on single-instance presence. A documented exception allows kill-list words where meaning genuinely requires them (e.g., "robust" in a methodology discussion of robust statistics; "comprehensive" when describing full-coverage data). The coordinator may retain a kill-list word with a one-line justification note; justified retentions don't trigger another flag. | Flag: the artifact uses "robust" four times to describe unrelated systems. Don't flag: one instance of "robust" in a section on robust regression. |
+| Kill-list overuse | Kill-list *words* are flagged only when the same word appears 3+ times in the artifact (overuse pattern), not on single-instance presence; kill-list *phrases* flag on first occurrence — one "in conclusion" or "let's be honest" is already a tell. A documented exception allows kill-list words where meaning genuinely requires them (e.g., "robust" in a methodology discussion of robust statistics; "comprehensive" when describing full-coverage data). The coordinator may retain a kill-list word with a one-line justification note; justified retentions don't trigger another flag. | Flag: the artifact uses "robust" four times to describe unrelated systems. Don't flag: one instance of "robust" in a section on robust regression. |
 | Em-dash overuse | Em-dashes are permitted at natural human density (roughly 1 per 150-200 words). Flag only OVERUSE: 3+ em-dashes in adjacent sentences, or an em-dash in every paragraph. Em-dashes provide natural breathing rhythm; removing them forces stilted circumlocutions, so single or occasional uses are fine. | Bad (flag): "The policy — which was controversial — failed. Critics — mostly economists — attacked it. Supporters — a shrinking group — defended it." Fix: collapse two of the three em-dash pairs into parentheses or commas. Fine (don't flag): one em-dash every few paragraphs. |
 | Hedge clustering | 3+ hedges within 2 sentences | "somewhat arguably perhaps" |
-| Sentence template repetition | Same syntactic structure 3+ times in 5 paragraphs | "[Topic] is [adjective]. [Topic] is [adjective]." |
+| Sentence template repetition | Same syntactic structure 3+ times in 5 paragraphs — including anaphora (the same sentence-opening word 3+ sentences running) anywhere outside a kicker; one anaphora set per piece is the ceiling | "[Topic] is [adjective]. [Topic] is [adjective]." · "Both ran as populists. Both embraced the claims. Both carried contempt." |
 | Rhythm monotony | 5+ consecutive sentences within 20% of same word count | All sentences 15-18 words |
 | Transition word repetition | Same transition used 3+ times in the piece | "However," "Moreover," "Furthermore" |
 | List-then-elaborate | Announce N items, then walk through each identically | "There are three factors. First... Second... Third..." |
 | Symmetric structure | Every paragraph same length, same shape | All paragraphs: topic sentence + 3 supporting + concluding |
-| Over-signposting | Excessive meta-commentary about structure | "As mentioned earlier," "As we will see," "It's worth noting" |
+| Summary-kicker ending | Final paragraph recaps points already made, or closes on a rhetorical flourish ("The real question is...", "Only time will tell", a negation-antithesis pivot). A mid-piece recap paragraph ("what this adds up to" followed by a re-list of prior facts) is the same tell one section early. No recap at any register; for which flourishes registers 4-5 license, defer to the Editorial Anti-Patterns table. | "This isn't about X. It's about Y. The real question is Z." → end on a concrete detail, a specific forward consequence, or a circle-back that adds new meaning. |
+| Over-signposting | Meta-commentary about structure, including its conversational disguise: paragraphs opened with a stage direction. Flag when 3+ paragraphs open on a stage direction, however varied the wording and at any register — the move, not the phrase, is the template. | "As mentioned earlier," "It's worth noting"; consecutive paragraph openers "Look at how the money works." / "And then there's..." / "Then came..." / "Let's be honest..." / "Here's the pushback." |
 | Qualitative vagueness | Magnitude words without specifics | "significant increase" (no number), "growing concern" (no evidence) |
 | Vague referents | Sentence opens with "this," "these," "such," or "the pattern" without naming what it refers to | "This suggests..." "Such convergence points to..." |
 | Academic/archaic phrasing | Nominalized verbs, inverted constructions, or abstractions where plain contemporary language would work. The sentence should sound natural in The Economist or Globe and Mail, not in a medical journal | "persisted across the full series" (say "lasted the entire period"), "the compositional pattern decoupled" (say "the types of crime began moving in opposite directions") |
@@ -1446,7 +1441,7 @@ The coordinator handles word-level substitution directly during REVISE, guided b
 
 **When to replace a word**:
 1. The Voice Auditor flagged it as avoided vocabulary — mandatory replacement
-2. The Voice Auditor flagged it as a kill-list overuse (3+ occurrences of the same word) or AI-tell pattern — advisory replacement. The coordinator may keep a flagged kill-list word if its meaning is genuinely required in context (e.g., "robust" in a discussion of robust statistics); a one-line justification note satisfies the flag and the word stays
+2. The Voice Auditor flagged it as kill-list overuse or an AI-tell pattern — advisory replacement, with two exceptions from the catalog: kill-list *phrases* flag on first occurrence, and power-position hits are binding per scoring safeguard #5. The coordinator may keep a flagged kill-list word if its meaning is genuinely required in context (e.g., "robust" in a discussion of robust statistics); a one-line justification note satisfies the flag and the word stays
 3. The word is generic ("shows," "demonstrates," "indicates," "utilizes") and the active lexicon has a more characteristic alternative — recommended
 
 **How to pick the replacement**:
@@ -1570,7 +1565,7 @@ Re-read the entire artifact as if seeing it for the first time. Discard iteratio
 2. **Narrative arc**: restructure around a tension-resolution or before-after frame. Tests whether the piece lacks forward momentum
 3. **Compression**: what if this were half the length? What survives the cut? Tests whether the piece is padded
 
-Pick the most promising alternative and execute it as a single DRAFT. Run the full REVIEW step (both agents) on the structural rethink draft. **The Maximum Increment Rule is relaxed to +2 per dimension** for structural rethink iterations, because the artifact is fundamentally reorganized. However, unaddressed high-severity review annotations still cap dimensions per safeguard #8. Log with tag `[STRUCTURAL]`, including all 3 alternatives considered and the rationale for the choice.
+Pick the most promising alternative and execute it as a single DRAFT. Run the full REVIEW step (both agents) on the structural rethink draft. **The Maximum Increment Rule is relaxed to +2 per dimension** for structural rethink iterations, because the artifact is fundamentally reorganized. However, unaddressed high-severity review annotations still cap dimensions per safeguard #4 (External Review Integration). Log with tag `[STRUCTURAL]`, including all 3 alternatives considered and the rationale for the choice.
 
 ---
 
@@ -1626,6 +1621,8 @@ After Reader Agent and Voice Auditor annotations are incorporated during REVISE,
 
 ### 5. Readability Gate (mandatory for all registers except `expert` audience)
 Before final SCORE, run `node scripts/readability-check.mjs <artifact.md> --audience=<default|general|expert> --kill-list=config/kill-list.yaml --json` on the plain-text artifact. Flesch-Kincaid Grade Level must be ≤ 12.0 (default audience) or ≤ 10.0 (general-public / undergraduate audience). `expert` audience is exempt from the cap, but the script still runs and its stats are logged. Any violation caps Audience Calibration at 6 regardless of other qualities, via the same cap mechanism as safeguard #3 above (Register Compliance Check).
+
+The same JSON's `power_position_hits` array (negation-antithesis and tricolon hits the script has already mapped into the first two paragraphs or the final one) is binding for every register and every audience — the `expert` exemption above covers only the FK cap, not this array. Each listed hit must be rewritten before SCORE, then confirmed gone by one re-run of the check; the Voice Auditor may not dismiss it and register latitude is no defense. `negation_antithesis`/`tricolon_paragraphs` hits outside the power positions may be retained only with a one-line justification in `log.md`. (When these fields were advisory, a run shipped a nut graph and kicker that matched the catalog's own negation-antithesis examples verbatim.)
 
 ### Composite Score
 ```
@@ -1766,7 +1763,7 @@ The Writer-Polish-Agent is related to but distinct from the Voice Auditor. The V
 
 ## Skeptical-Editor Smoke Test (Pre-Delivery)
 
-Runs once immediately before final delivery, AFTER the Writer-Polish-Agent pass. Non-blocking by default — logs findings but doesn't stop the run. Operators can make it blocking after calibration.
+Runs once immediately before final delivery, AFTER the Writer-Polish-Agent pass. Non-blocking by default — findings trigger at most one bounded touch-up of the cited sentences, never a halt. Operators can make it blocking after calibration.
 
 ### Skeptical-editor subagent
 
@@ -1813,7 +1810,7 @@ The following check must be appended verbatim into this subagent's prompt, after
 
 ### Coordinator handling
 
-Save report to `skeptical_editor.md`. `deliver` → proceed to output. `revise-and-redeliver` → log deferral but still deliver (non-blocking). `escalate-to-user` → surface report to user before final delivery.
+Save report to `skeptical_editor.md`. `deliver` → proceed to output. `revise-and-redeliver` → rewrite only the specific sentences the report cites (one bounded pass, no re-review loop), re-run `node scripts/readability-check.mjs` once and revert the touch-up if it fails, log the diff, and update `state.json`/the ledger before the end-of-run integrity check — the touch-up is part of the logged loop, never an edit after it. `escalate-to-user` → surface report to user before final delivery.
 
 ---
 

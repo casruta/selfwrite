@@ -133,7 +133,7 @@ The run artifacts show the loop pathologies happening in practice:
 - **Schema drift:** old runs use a deprecated `synonym_*` results.tsv schema; nothing stamps a `schema_version`.
 
 **Fixes:**
-- **Add `lib/run-integrity.mjs`** with `checkRunConsistency(runDir)`: `state.json.current_cycle` == `results.tsv` row count; artifact line count == last logged `total_lines`; one `results.tsv` row per *attempted* iteration (reverts logged, never omitted); `log.md` narrative entry required before a `results.tsv` row may be appended. Mirror the rigor already present in the selfpost queue validators. Run it at every REFLECT step and at run end.
+- **Add `lib/run-integrity.mjs`** with `checkRunConsistency(runDir)`: `state.json.current_cycle` == `results.tsv` row count; artifact line count == last logged `total_lines`; one `results.tsv` row per *attempted* iteration (reverts logged, never omitted); `log.md` narrative entry required before a `results.tsv` row may be appended. Mirror the rigor already present in the selfpost queue validators (since removed with /selfpost). Run it at every REFLECT step and at run end.
 - Stamp `schema_version` in `results.tsv`/`state.json`; document the `samples/`+`state.json`+`learnings.md` layout as an explicit alternate mode or bring such runs into conformance.
 - Forbid editing the target artifact outside the logged loop (pre-flight hash/line-count check); version shared artifacts per run (`writing-nyt.v{run_id}.md`) or require rubric inheritance when continuing a shared file.
 - Add a self-consistency lint before consolidation "keep"s (the shipped skill file says "10-Pass Revision Protocol" over a 12-item list and calls it "the 12-pass protocol" three lines later — no rubric caught it).

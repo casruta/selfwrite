@@ -18,6 +18,8 @@ summary.md             # final metrics and learnings
 
 If you want to know what a fresh run will output, read this one.
 
+**`claude-md-rewrite_2026-07-11_234935/`** and **`readme-rewrite_2026-07-12_205214/`** — Two schema-v2 dogfood runs in which the loop rewrote this repo's own `CLAUDE.md` and `README.md`. Both use the current ledger discipline: `# schema_version: 2` atop `results.tsv`, a `state.json` hash reconciled after every iteration, drafts at `versions/v{N}-draft.md` with kept finals at `versions/v{N}.md` (a reverted iteration keeps only its draft — see claude-md-rewrite's iteration 4), and the run-root `draft.md` as the tracked artifact. Because REVISE often changed nothing after REVIEW, many draft/final pairs are byte-identical; that is the honest record, not an error.
+
 ## Historical (older layouts)
 
 **`nyt-upgrade/`** — Early run from before the skill distillation refactor. Uses `samples/` and `writing-nyt.md`/`writing-nyt-backup.md` instead of `versions/`, and has a `learnings.md` instead of `skill.md`. Kept because the research directory shows what the tool looked like in its earlier analytical form.

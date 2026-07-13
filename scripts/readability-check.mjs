@@ -61,6 +61,10 @@ if (json) {
     console.log(`tricolon-burst candidates (${report.tricolon_paragraphs.length}):`);
     for (const h of report.tricolon_paragraphs) console.log(`  line ${h.line}: ${h.excerpt}`);
   }
+  if (report.power_position_hits.length) {
+    console.log(`POWER-POSITION hits (binding per selfwrite.md scoring safeguard #5):`);
+    for (const h of report.power_position_hits) console.log(`  ${h.kind} at line ${h.line} (${h.position} paragraph ${h.paragraph})`);
+  }
   const undef = report.acronyms.filter((a) => !a.defined);
   if (undef.length) {
     console.log(`acronyms with no first-use expansion: ${undef.map((a) => `${a.acronym} (line ${a.first_use_line})`).join(', ')}`);

@@ -1,0 +1,7 @@
+# schema_version: 2
+iteration	target	hypothesis	composite_before	composite_after	delta	max_single_dim_drop	decision	reason	mode	research_findings	research_approved	reader_annotations	voice_audit_count	tree_depth	tree_nodes	tree_contradictions	tree_gated_count	total_lines
+1	draft.md	full restructure into topical paragraphs	5.20	7.55	2.35	0	keep	structure+register+completeness gains; avg-length violation is iteration 2 target	regular	0	-	0	0	0	0	0	0	66
+2	draft.md	gate repair: split uniformly long sentences	7.55	8.75	1.20	0	keep	gate passes (FK 10.20, avg 17.18, max 30); no content lost	regular	0	-	0	0	0	0	0	0	66
+3	draft.md	accuracy audit against repo; fix drift, cut flab	8.75	8.95	0.20	0	keep	no drift found; thresholds made exact, filler cut, gate keeps margin	regular	0	-	0	0	0	0	0	0	66
+4	draft.md	cut flab, lift register: merge intake beat, add /run-audit alias	8.95	9.20	0.25	0	keep	redundant beat removed, alias surfaced; gate margin intact	regular	0	-	0	0	0	0	0	0	66
+5	draft.md	relocate detector note to selfwrite section; restore AI-tell fact	9.20	9.55	0.35	0	keep	note topically placed, dropped detector-evasion fact recovered	regular	0	-	0	0	0	0	0	0	66

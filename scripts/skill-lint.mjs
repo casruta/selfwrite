@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // scripts/skill-lint.mjs
 //
-// Consistency lint over the four skill prompt files. Guards the invariants
+// Consistency lint over the three skill prompt files. Guards the invariants
 // introduced by the ANALYSIS.md remediation:
 //   1. every scripts/, lib/, tools/, config/, sources/ path a skill file
 //      references exists on disk (no phantom tool references),
@@ -22,7 +22,7 @@ import { pathToFileURL } from 'node:url';
 import { THRESHOLDS } from '../lib/readability.mjs';
 
 export const SKILL_FILES = Object.freeze([
-  'selfwrite.md', 'selfresearch.md', 'selfinvestigate.md', 'selfpost.md',
+  'selfwrite.md', 'selfresearch.md', 'selfinvestigate.md',
 ]);
 
 const PATH_RE = /\b(?:scripts|lib|tools|config|sources)\/[A-Za-z0-9._/-]+\.[a-z]{2,5}\b/g;

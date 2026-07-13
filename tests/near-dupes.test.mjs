@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { nearDupePairs, parseRecords, comparisonText } from '../lib/near-dupes.mjs';
+import { jaccardBigramSimilarity } from '../lib/similarity.mjs';
 
 describe('nearDupePairs — sources', () => {
   const sources = [
@@ -68,5 +69,31 @@ describe('review regressions', () => {
   it('object-map keys win over a record-level id field', () => {
     const { records } = parseRecords('{"S001":{"id":"custom","t":"x"},"S002":{"id":"custom","t":"y"}}', false);
     expect(records.map((r) => r.id).sort()).toEqual(['S001', 'S002']);
+  });
+});
+
+// Direct contract tests for the shared similarity helper — the selfpost
+// removal deleted its original suite while both quotes.mjs and
+// near-dupes.mjs still depend on these exact values.
+describe('jaccardBigramSimilarity contract', () => {
+  it('identical strings score 1 and disjoint strings score 0', () => {
+    expect(jaccardBigramSimilarity('model scale', 'model scale')).toBe(1);
+    expect(jaccardBigramSimilarity('abcdef', 'uvwxyz')).toBe(0);
+  });
+
+  it('two empty strings score 1; empty vs non-empty scores 0', () => {
+    expect(jaccardBigramSimilarity('', '')).toBe(1);
+    expect(jaccardBigramSimilarity('', 'text')).toBe(0);
+  });
+
+  it('is case-insensitive, whitespace-collapsing, and symmetric', () => {
+    expect(jaccardBigramSimilarity('Model  Scale', 'model scale')).toBe(1);
+    const a = 'reinforcement learning from feedback';
+    const b = 'reinforcement learning with feedback';
+    expect(jaccardBigramSimilarity(a, b)).toBe(jaccardBigramSimilarity(b, a));
+  });
+
+  it('applies NFC unicode normalization', () => {
+    expect(jaccardBigramSimilarity('café nights', 'café nights')).toBe(1);
   });
 });
