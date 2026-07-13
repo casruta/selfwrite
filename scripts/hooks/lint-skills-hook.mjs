@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // scripts/hooks/lint-skills-hook.mjs
 //
-// PostToolUse hook: whenever an Edit/Write touches one of the four skill
+// PostToolUse hook: whenever an Edit/Write touches one of the three skill
 // prompt files, run the skill-file consistency lint and feed violations
 // back into the editing session (exit 2 surfaces stderr to Claude).
 // Wired up in .claude/settings.json. No-op for every other file.
@@ -17,7 +17,7 @@ process.stdin.on('end', () => {
   } catch {
     process.exit(0); // unparseable hook payload: never block
   }
-  if (!/(^|\/)self(write|research|investigate|post)\.md$/.test(filePath)) {
+  if (!/(^|\/)self(write|research|investigate)\.md$/.test(filePath)) {
     process.exit(0);
   }
   const cwd = process.env.CLAUDE_PROJECT_DIR || process.cwd();

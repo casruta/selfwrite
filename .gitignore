@@ -17,11 +17,6 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
-# Playwright (future Tier 2)
-.playwright-profile/
-playwright-report/
-test-results/
-
 # Secrets
 .env
 .env.local

@@ -176,3 +176,46 @@ describe('review regressions', () => {
     expect(r.negation_antithesis).toHaveLength(0);
   });
 });
+
+describe('kill-list typographic matching and hit types', () => {
+  const killList = { words: ['robust'], phrases: ["let's be honest"] };
+
+  it("matches a curly-apostrophe phrase against a straight-quoted term", () => {
+    const r = analyzeReadability('Let’s be honest about the results of the study.', { killList });
+    const hit = r.kill_list_hits.find((h) => h.word === "let's be honest");
+    expect(hit).toBeDefined();
+    expect(hit.count).toBe(1);
+  });
+
+  it('tags each hit as word or phrase', () => {
+    const r = analyzeReadability("The robust model was robust. Let's be honest about that.", { killList });
+    expect(r.kill_list_hits.find((h) => h.word === 'robust').type).toBe('word');
+    expect(r.kill_list_hits.find((h) => h.word === "let's be honest").type).toBe('phrase');
+  });
+});
+
+describe('power_position_hits', () => {
+  const body = 'A plain middle paragraph with nothing remarkable in it at all.';
+  const tell = "This isn't coincidence. It's a pattern.";
+
+  it('maps a kicker-paragraph hit to the final power position', () => {
+    const text = ['An ordinary opening paragraph sits here.', '', body, '', tell].join('\n');
+    const r = analyzeReadability(text);
+    const hit = r.power_position_hits.find((h) => h.kind === 'negation_antithesis');
+    expect(hit).toBeDefined();
+    expect(hit.position).toBe('final');
+  });
+
+  it('maps a nut-graph hit to an opening power position', () => {
+    const text = [tell, '', body, '', 'A quiet closing paragraph ends the piece.'].join('\n');
+    const r = analyzeReadability(text);
+    expect(r.power_position_hits.some((h) => h.position === 'opening')).toBe(true);
+  });
+
+  it('leaves mid-piece hits out of the power-position array', () => {
+    const text = ['An ordinary opening paragraph sits here.', '', 'A second calm paragraph follows it.', '', tell, '', body, '', 'A quiet closing paragraph ends the piece.'].join('\n');
+    const r = analyzeReadability(text);
+    expect(r.negation_antithesis.length).toBeGreaterThanOrEqual(1);
+    expect(r.power_position_hits).toHaveLength(0);
+  });
+});

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // scripts/skill-lint.mjs
 //
-// Consistency lint over the four skill prompt files. Guards the invariants
+// Consistency lint over the three skill prompt files. Guards the invariants
 // introduced by the ANALYSIS.md remediation:
 //   1. every scripts/, lib/, tools/, config/, sources/ path a skill file
 //      references exists on disk (no phantom tool references),
