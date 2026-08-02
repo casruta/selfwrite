@@ -1,0 +1,17 @@
+[
+  {
+    "source_id": "S001",
+    "title": "Audited study",
+    "canonical_url": "https://example.org/study",
+    "persistent_id": "doi:10.1/example",
+    "source_type": "journal_article",
+    "published_at": "2026-01-02",
+    "updated_at": "2026-01-02",
+    "retrieved_at": "2026-08-02T12:00:00Z",
+    "credibility_tier": 1,
+    "peer_review_status": "peer_reviewed",
+    "retraction_status": "not_retracted",
+    "integrity_check": {"checked_at": "2026-08-02T12:05:00Z", "method": "publisher_and_crossref", "result": "pass", "landing_url": {"checked_at": "2026-08-02T12:04:00Z", "status_code": 200, "final_url": "https://example.org/study", "resolved": true}},
+    "snapshot_sha256": "93f8c45218d14a24d9d6c9abf5625e7c5adc2e9a60c9bc5f6256a3c27c26d3c3"
+  }
+]

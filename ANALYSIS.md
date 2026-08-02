@@ -1,5 +1,24 @@
 # Multi-Agent Codebase Analysis — Research Loop Integrity & Grade-12 Readability
 
+## v0.3 remediation status
+
+This document records the pre-v0.3 audit. The current implementation addresses it through explicit release contracts rather than treating prompt instructions as enforcement:
+
+Audit basis: [`00703f2`](https://github.com/casruta/selfwrite/tree/00703f210a5ec247e4b9380ad9797fff5409bf04). Unless a later section explicitly says otherwise, every `file:line` reference below refers to that immutable commit rather than the current working tree.
+
+| Finding family | v0.3 status | Enforced by |
+|---|---|---|
+| Fabricated or altered quotes | Validator-enforced | Original-text snapshots, contiguous evidence matching, provenance allow-list, duplicate-ID checks |
+| Title-only synthesis | Validator-enforced | Evidence-bearing, multi-source SYN components and claim-ledger validation |
+| Missing or incomplete audit artifacts | Validator-enforced for release artifacts | Required schema-v3 `run.json`, mode-specific artifacts, fail-closed aggregate audit |
+| Out-of-loop or post-verification edits | Hash-bound at release | Artifact/verified/scored SHA-256 equality detects later byte changes; the hashes remain run-produced attestations |
+| Same-context semantic scoring | Replaced | Persisted randomized blind pairwise judges with tie-breaker; scores diagnostic only |
+| Readability blind spots | Validator-enforced | Audience normalization, tables/headings included, analyzed-visible-word coverage floor |
+| Stance-biased investigation scoring | Prompt contract implemented; live calibration pending | Stance may order questions only; evidence relevance, confidence, and gates remain neutral |
+| Historical example overclaiming | Documentation corrected | All existing example runs labeled legacy; only schema-v3 audited runs may be called current |
+
+The automated suite is the authority for validator status. Interactive Claude Code runs remain necessary to validate orchestration quality and the benchmark acceptance thresholds.
+
 **Date:** 2026-07-11
 **Method:** Five parallel auditor agents (selfresearch loop, selfinvestigate loop, selfwrite loop, output naturalness, run-log ground truth), findings cross-verified against the files before inclusion.
 
@@ -9,9 +28,11 @@
 
 ---
 
-## Executive summary
+## Historical executive summary (pre-v0.3)
 
-The pipelines are well-designed on paper, but both goals currently fail on enforcement, not on intent:
+The findings below describe the audited pre-v0.3 commit and are retained as design history. They are not descriptions of the current schema-v3 implementation; use the remediation table above for current status.
+
+At the audited commit, the pipelines were well-designed on paper, but both goals failed on enforcement, not on intent:
 
 - **Goal 1 (research):** The verifier never re-checks that quotes are verbatim substrings of stored source text, so a fabricated quote passes verification (the biggest single hole). Scoring in `/selfwrite` is self-graded by the same context that wrote the draft, and the forced 4–6 baseline plus +1/iteration cap can manufacture an improvement arc regardless of real quality. Stance up-weighting in `/selfinvestigate` biases the evidence pool at retrieval time, so hiding stance from the writer is cosmetic. Real run logs show these aren't theoretical: the `nyt-upgrade` run abandoned its audit trail at cycle 12 of 36 while the shipped artifact grew to nearly twice its last logged size, unscored.
 - **Goal 2 (readability):** "Grade 12" appears exactly once as a target across ~5,100 lines of skill files (`selfwrite.md:903`), inside an optional rubric row that a real run (`runs/2026-04-01_011613/rubric.md`) dropped entirely. There is no numeric readability gate anywhere, no jargon-on-first-use rule, and `/selfresearch` and `/selfinvestigate` — the skills that produce reports — contain zero readability language. The AI-tell catalog misses the "This isn't X. It's Y." construction; a real run *deliberately added it to raise its own score* (`runs/2026-04-01_011613/log.md:90-94`) and it shipped in the final version.
@@ -188,7 +209,9 @@ Plus a tricolon-burst rule: flag any single paragraph with 3+ short parallel cla
 
 ---
 
-## Prioritized implementation checklist
+## Historical implementation checklist (pre-v0.3)
+
+This table records the original recommendations. Use the remediation table above for current status.
 
 | # | Change | File(s) | Serves |
 |---|--------|---------|--------|

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // scripts/skill-lint.mjs
 //
 // Consistency lint over the three skill prompt files. Guards the invariants
@@ -24,6 +23,11 @@ import { THRESHOLDS } from '../lib/readability.mjs';
 export const SKILL_FILES = Object.freeze([
   'selfwrite.md', 'selfresearch.md', 'selfinvestigate.md',
 ]);
+export const REQUIRED_SHARED_BLOCKS = Object.freeze({
+  'budget-stop': SKILL_FILES,
+  convergence: SKILL_FILES,
+  'grade12-check': SKILL_FILES,
+});
 
 const PATH_RE = /\b(?:scripts|lib|tools|config|sources)\/[A-Za-z0-9._/-]+\.[a-z]{2,5}\b/g;
 const SHARED_RE = /<!-- SHARED:([a-z0-9-]+) -->([\s\S]*?)<!-- \/SHARED:\1 -->/g;
@@ -46,7 +50,13 @@ export function lintSkills(rootDir) {
 
   for (const name of SKILL_FILES) {
     const path = join(root, name);
-    if (!existsSync(path)) continue;
+    if (!existsSync(path)) {
+      violations.push({
+        file: name, line: 0, rule: 'missing-skill-file',
+        message: `required skill file ${name} is missing`,
+      });
+      continue;
+    }
     filesChecked.push(name);
     const text = readFileSync(path, 'utf8');
     const lines = text.split(/\r?\n/);
@@ -128,6 +138,18 @@ export function lintSkills(rootDir) {
         violations.push({
           file: e.file, line: e.line, rule: 'shared-block-drift',
           message: `SHARED:${blockName} differs from the copy in ${reference.file}:${reference.line} — shared blocks must stay byte-identical`,
+        });
+      }
+    }
+  }
+
+  for (const [blockName, requiredFiles] of Object.entries(REQUIRED_SHARED_BLOCKS)) {
+    const present = new Set((sharedBlocks.get(blockName) ?? []).map((entry) => entry.file));
+    for (const file of requiredFiles) {
+      if (!present.has(file)) {
+        violations.push({
+          file, line: 0, rule: 'missing-shared-block',
+          message: `required SHARED:${blockName} block is missing from ${file}`,
         });
       }
     }

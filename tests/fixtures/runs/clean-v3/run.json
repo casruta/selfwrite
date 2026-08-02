@@ -1,0 +1,12 @@
+{
+  "schema_version": 3,
+  "run_type": "selfwrite",
+  "prompt_commit": "00703f2",
+  "artifact": "draft.md",
+  "artifact_sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8",
+  "verified_artifact_sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8",
+  "scored_artifact_sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8",
+  "audience": "default",
+  "status": "releasable",
+  "release_gates": {"integrity_pass": true, "evidence_pass": true, "quality_pass": true}
+}

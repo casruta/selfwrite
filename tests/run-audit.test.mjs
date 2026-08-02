@@ -1,10 +1,3 @@
-// tests/run-audit.test.mjs
-//
-// Vitest suite for scripts/run-audit.mjs — the one-command audit that
-// merges ledger integrity, quote verification, readability, and near-dupe
-// detection over a run directory. Exercises the CLI end-to-end via
-// execFileSync since the script is the integration point.
-
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 
@@ -12,62 +5,50 @@ function runAudit(args) {
   try {
     const stdout = execFileSync('node', ['scripts/run-audit.mjs', ...args, '--json'], { encoding: 'utf8' });
     return { code: 0, report: JSON.parse(stdout) };
-  } catch (err) {
-    return { code: err.status, report: err.stdout ? JSON.parse(err.stdout) : null };
+  } catch (error) {
+    return { code: error.status, report: error.stdout ? JSON.parse(error.stdout) : null };
   }
 }
 
-describe('run-audit CLI', () => {
-  it('passes the clean v2 fixture with exit 0', () => {
-    const { code, report } = runAudit(['tests/fixtures/runs/clean-v2']);
+describe('fail-closed aggregate audit', () => {
+  it('releases only when integrity, evidence, and readability all pass', () => {
+    const { code, report } = runAudit(['tests/fixtures/runs/clean-v3']);
     expect(code).toBe(0);
+    expect(report.integrity_pass).toBe(true);
+    expect(report.evidence_pass).toBe(true);
+    expect(report.quality_pass).toBe(true);
+    expect(report.sections.judgment.pass).toBe(true);
+    expect(report.release_pass).toBe(true);
     expect(report.pass).toBe(true);
-    expect(report.errors).toBe(0);
-    expect(report.sections.integrity.valid).toBe(true);
-    expect(report.sections.quotes).toBeUndefined(); // no quotes.jsonl in that fixture
+  });
+
+  it('does not release legacy runs, even when their downgraded integrity passes', () => {
+    const { code, report } = runAudit(['tests/fixtures/runs/clean-v2', '--legacy']);
+    expect(code).toBe(1);
+    expect(report.sections.integrity.legacy).toBe(true);
+    expect(report.release_pass).toBe(false);
+  });
+
+  it('fails malformed current runs and reports every aggregate', () => {
+    const { code, report } = runAudit(['tests/fixtures/runs/malformed-v3']);
+    expect(code).toBe(1);
+    expect(report.integrity_pass).toBe(false);
+    expect(report.evidence_pass).toBe(true);
+    expect(report.quality_pass).toBe(false);
+    expect(report.sections.judgment.pass).toBe(false);
+    expect(report.release_pass).toBe(false);
+  });
+
+  it('uses readability as a quality and release gate', () => {
+    const { code, report } = runAudit(['tests/fixtures/runs/clean-v3', '--audience=general']);
     expect(report.sections.readability).toBeDefined();
+    expect(report.quality_pass).toBe(report.sections.readability.pass);
+    expect(report.release_pass).toBe(report.integrity_pass && report.evidence_pass && report.quality_pass);
+    expect(code).toBe(report.release_pass ? 0 : 1);
   });
 
-  it('fails the quoted fixture on its one fabricated quote', () => {
-    const { code, report } = runAudit(['tests/fixtures/runs/quoted-v2']);
-    expect(code).toBe(1);
-    expect(report.pass).toBe(false);
-    expect(report.sections.quotes.total).toBe(3);
-    expect(report.sections.quotes.verbatim).toBe(2);
-    expect(report.sections.quotes.fabricated.map((f) => f.quote_id)).toEqual(['Q003']);
-    // the ledger itself is clean — the failure is purely the quote gate
-    expect(report.sections.integrity.valid).toBe(true);
-    // near-dupes section ran because sources.json exists
-    expect(report.sections.near_dupes_sources).toBeDefined();
-  });
-
-  it('fails runs/nyt-upgrade with the two known integrity errors', () => {
-    const { code, report } = runAudit(['runs/nyt-upgrade']);
-    expect(code).toBe(1);
-    const ids = report.sections.integrity.checks
-      .filter((c) => c.level === 'error')
-      .map((c) => c.id)
-      .sort();
-    expect(ids).toEqual(['artifact_line_drift', 'cycle_row_mismatch']);
-  });
-
-  it('reports readability advisories without failing the audit (expert audience)', () => {
-    const { code, report } = runAudit(['tests/fixtures/runs/clean-v2', '--audience=expert']);
-    expect(code).toBe(0);
-    expect(report.sections.readability.audience).toBe('expert');
-  });
-
-  it('exits 2 on a missing run dir or bad audience', () => {
+  it('exits 2 for an invalid invocation', () => {
     expect(runAudit(['runs/does-not-exist']).code).toBe(2);
-    expect(runAudit(['tests/fixtures/runs/clean-v2', '--audience=child']).code).toBe(2);
-  });
-});
-
-describe('review regressions', () => {
-  it('fails when sources.json is unparseable instead of passing vacuously', () => {
-    const { code, report } = runAudit(['tests/fixtures/runs/broken-sources']);
-    expect(code).toBe(1);
-    expect(report.sections.quotes.ok).toBe(false);
-    expect(report.errors).toBeGreaterThanOrEqual(1);
+    expect(runAudit(['tests/fixtures/runs/clean-v3', '--audience=child']).code).toBe(2);
   });
 });

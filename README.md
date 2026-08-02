@@ -4,63 +4,56 @@
 
 ![Claude Code](https://img.shields.io/badge/Claude_Code-Skill-blue)
 
-Selfwrite turns Claude Code into three time-boxed, self-correcting writing and research pipelines. One polishes prose, one produces cited academic research, and one builds investigations from public records. Each pipeline is a single prompt file backed by small deterministic Node validators, so no LLM (large language model) grades its own homework. The validators re-derive counts, similarity, and grade levels outside the model, and no API keys are required by default.
+Selfwrite adds three time-boxed writing and research workflows to Claude Code. One polishes prose, one produces cited academic research, and one builds investigations from public records. Deterministic Node validators enforce run integrity, evidence provenance, hashes, and readability constraints. Semantic writing quality is evaluated separately through stored blind-review records; the validator checks the record, not whether a model was truly independent. No paid third-party research API is required by default, although Claude Code itself requires supported Anthropic access and some backends need free credentials.
 
 ## The three skills
 
 ### `/selfwrite` — prose polish
 
-Point `/selfwrite` at any prose — an opinion column, a memo, a README — and give it a task description and a time budget. Budgets are written `Nm` or `Nh`, with a 10-minute floor. At intake the skill asks a few questions about audience, purpose, and register, then generates a scoring rubric. From there it iterates THINK → DRAFT → REVIEW → REVISE → SCORE → REFLECT until the budget runs out. A score agent with fresh context grades every revision, and reviews hunt AI-tell phrasing against a kill list, so the finished piece reads like natural human writing. The loop keeps a version when its score improves and reverts one that slips, and every version stays on disk under `versions/`, so an aggressive edit can never destroy work. Simple-rewrite mode polishes what is already on the page, while deep-rewrite mode runs a research tree to surface missing evidence and counterarguments. Naming a publication voice at intake (Economist, Reuters, NYT News Analysis) loads a lexicon that constrains word choice and sentence rhythm. Allow 15 to 30 minutes for quick edits, 45 minutes to 2 hours for full rewrites, and 1 to 6 hours when the piece needs new evidence.
-
-*A note on AI-text detectors: they evolve daily, and a whole paragraph can get flagged over one phrase that current models overuse. Swapping in two or three fitting synonyms is usually enough to break the pattern — and no, this note was not written by the product.*
+Point `/selfwrite` at prose or documentation — an opinion column, memo, explainer, or README — and give it a task description and time budget. The loop iterates THINK → DRAFT → REVIEW → REVISE → JUDGE → REFLECT. Two blind judges compare each candidate with the incumbent in randomized order; a third resolves disagreement. Judge records and artifact hashes remain on disk. Late polish is treated as a new candidate and cannot inherit an earlier score. Voice profiles describe formality, directness, evidence density, rhythm, vocabulary level, and point of view rather than copying stock phrases from a publication. The objective is clearer, more faithful writing for the intended reader—not evasion of AI-text detectors. Code generation is outside this skill's v0.3 scope.
 
 ### `/selfresearch` — cited academic research
 
-Give `/selfresearch` a research question and at least 15 minutes, and it returns a cited report. Depending on the budget, that can be an evidence brief, a focused review, or a full literature survey. The loop runs PLAN → ITERATE → SYNTHESIZE → VERIFY → SUMMARIZE across Semantic Scholar, OpenAlex, and arXiv, with an optional web backend. Every claim carries one of four tier tags. SRC marks a claim backed by one quote from one source, and SYN a conclusion drawn across several sources. INF flags a stated reasoning step, and UNV the rare claim no retrieved source could confirm. Each SRC tag anchors to a quote extracted from a stored source. VERIFY completes only after every quote checks out as a verbatim substring of its source text, and a fabricated citation fails the run with no appeal. Plan on 20 to 30 minutes for an evidence brief and 30 to 60 for a focused report. A literature review takes one to two hours; an exhaustive survey takes longer.
+Give `/selfresearch` a research question and a time budget; 15 minutes is a useful minimum for a narrow task. The v0.3 sequence is PLAN → RETRIEVE → PROVENANCE CHECK → EVIDENCE EXTRACT → DRAFT TAGGED REPORT → VERIFY → REMEDIATE → REVERIFY → RENDER → FINAL AUDIT. Direct evidence must be a contiguous span of stored original source text with a locator and document hash. Generated summaries and search snippets are discovery aids only. Syntheses identify the evidence contributed by every source, inference tags name verified premise claims, and unverified material is moved to limitations rather than presented as a finding.
 
 ### `/selfinvestigate` — thesis-driven investigation
 
-The most demanding skill, `/selfinvestigate`, takes a thesis and a budget of at least 30 minutes, then works the claim through public records. It queries FEC and OpenSecrets for campaign finance, SEC EDGAR for corporate filings, and CourtListener for court records. The Wayback Machine recovers pages that have since disappeared, while academic and web sources round out the pool. The loop runs SCOPE → QUESTION WEB → RESEARCH → CONNECT → WRITE. An optional `--stance` flag sets the direction: `prove` when you hold strong priors, `disprove` to stress-test the thesis, or the neutral default `investigate`. Stance changes how evidence is weighted during triage, never whether counter-queries run. Before WRITE, a mandatory thesis-assessment gate presents the evidence for and against the thesis and asks you to confirm the direction. That check keeps a `prove` stance from shipping a one-sided brief. Expect 45 to 60 minutes for a quick brief, one to two hours for a standard investigation, and two to four hours or more for deep work.
+The most demanding skill, `/selfinvestigate`, takes a thesis and a time budget; 30 minutes is a practical minimum. It tests the claim against public records. Its source cards cover the official [OpenFEC API](https://api.open.fec.gov/developers/), [SEC EDGAR search and APIs](https://www.sec.gov/search-filings), [CourtListener developer resources](https://www.courtlistener.com/help/), the [OpenSecrets website](https://www.opensecrets.org/), and the [Wayback Machine](https://archivesupport.zendesk.com/hc/en-us/articles/360004651732-Using-The-Wayback-Machine). These backends identify records; the workflow still requires provenance checks and exact stored evidence. An optional `--stance` flag changes question order only: it never changes relevance, credibility, confidence, or release thresholds, and counter-queries always run. Reputation-sensitive findings require a primary record or two independent credible sources plus attribution and legal-risk review.
 
 ## Install and quick start
 
-Copy the three skill prompts into your Claude Code skills directory, then install the validator dependencies:
+Claude Code discovers personal skills at `~/.claude/skills/<skill-name>/SKILL.md`. Install each prompt under its own directory, then install the validator dependencies:
 
 ```bash
-mkdir -p ~/.claude/skills
-cp selfwrite.md selfresearch.md selfinvestigate.md ~/.claude/skills/
+for skill in selfwrite selfresearch selfinvestigate; do
+  mkdir -p "$HOME/.claude/skills/$skill"
+  cp "$skill.md" "$HOME/.claude/skills/$skill/SKILL.md"
+done
 npm install
 ```
 
-The research skills read backend reference cards from `sources/` at runtime, so run them from this repo or copy `sources/` into your working project. The validators are hard gates, not options; `npm install` supplies only the kill-list parser and the test suite, and the rest runs on Node alone. Verify the install by typing `/selfwrite`, `/selfresearch`, or `/selfinvestigate` in any Claude Code session. Then invoke a skill with a task and a time budget:
+The research skills read backend reference cards from `sources/` at runtime, so run them from this repository or copy `sources/` into the working project. The validators are release gates, not semantic judges; `npm install` supplies the YAML parser and test suite, while the validators otherwise use Node's standard library. Verify the install with Claude Code's `/skills` command, then invoke `/selfwrite`, `/selfresearch`, or `/selfinvestigate` with a task and time budget. See Anthropic's current [skills documentation](https://code.claude.com/docs/en/slash-commands) for discovery and precedence rules.
 
-```
-/selfwrite "tighten this opinion column on housing policy" 30m
-/selfresearch "known failure modes of RLHF" 1h
-/selfinvestigate "Donor networks shifted to Trump by 2020" 2h --stance=investigate
-```
+For example, run `/selfwrite "tighten this opinion column on housing policy" 30m`. The research skills use the same pattern: a quoted task, a duration, and any documented option.
 
-Concrete answers to the intake questions pay off: "a skeptical CFO reading a one-pager" produces sharper output than "a general audience". The loops are engineered to spend the whole budget, so a longer budget buys deeper work rather than a faster finish.
+Concrete intake answers help: "a skeptical CFO reading a one-pager" gives the workflow more useful constraints than "a general audience." A longer budget permits deeper retrieval and review when meaningful work remains; the workflow does not create work merely to consume time.
 
 ## Auditing runs
 
-Every run writes to `runs/<skill>_<timestamp>/`: numbered drafts under `versions/`, a narrative `log.md`, a `results.tsv` ledger with one row per attempted iteration, and a distilled `skill.md`. The `run-integrity.mjs` script reconciles that ledger against the artifact on disk. Its sibling `verify-quotes.mjs` re-checks every stored quote. The `readability-check.mjs` gate holds prose to grade 12 by default, a stricter grade 10 for a general audience, and exempts expert material. One command — also exposed as the `/run-audit` skill — runs the whole battery and returns a single verdict:
+Every v0.3 run carries `run.json` with its run type, prompt commit, audience, artifact hashes, status, and release gates. Research runs also carry original-text snapshots under `documents/`, evidence and claim ledgers, a tagged report, a recorded claim-coverage attestation, and retrieval-coverage records. Releasable prose runs require a complete `judgments/final.json`. `run-audit.mjs` returns separate `integrity_pass`, `evidence_pass`, `quality_pass`, and `release_pass` fields. Exit code 0 means every required gate passed. Historical runs require `--legacy` and can never receive a release verdict.
 
-```bash
-node scripts/run-audit.mjs runs/<run-dir> --json   # ledger + quotes + readability + dupes
-npm test                                           # validator suite; real runs/ are the fixtures
-```
+The complete public contract is documented in [`SCHEMA-v3.md`](SCHEMA-v3.md).
 
-Install a run's `skill.md` distillate as a skill of its own to carry its lessons into future runs:
+Run `node scripts/run-audit.mjs runs/<run-dir> --json` for the full release verdict. Use `evidence-check.mjs` or `judgment-check.mjs` for a focused report. Run `npm test` for the synthetic fixtures and the legacy readability regression.
 
-```bash
-cp runs/<run-id>/skill.md ~/.claude/skills/<domain>.md
-```
+Install a run's `skill.md` distillate under its own skill directory:
+
+Create `~/.claude/skills/<domain>/`, then copy the run's `skill.md` to `SKILL.md` in that directory.
 
 ## Optional MCP upgrades
 
-MCP (Model Context Protocol) servers are opt-in upgrades, documented in `sources/mcp-backends.md`, and the no-key default survives them: nothing ships preconfigured. Exa or Tavily supplies research-grade web search to `/selfresearch` and `/selfinvestigate`, replacing the least reliable retrieval link. Zotero mirrors a run's sources into a citation library. When a server is absent, every skill degrades to its WebFetch reference card. The skills treat MCP output as untrusted external content, exactly as they treat any fetched web page.
+MCP (Model Context Protocol) servers are opt-in upgrades documented in `sources/mcp-backends.md`; nothing ships preconfigured. Exa or Tavily can supply research search to `/selfresearch` and `/selfinvestigate`. Zotero can mirror a run's sources into a citation library. Without an MCP server, each skill follows the relevant source card's public or credential-aware path. The skills treat MCP output as untrusted external content, exactly as they treat fetched pages.
 
 ## Requirements
 
-Selfwrite needs the [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) and, for the validators, Node.js 20 or newer. Dependencies stay limited to what `npm install` pulls in: YAML parsing for the kill list and the vitest suite.
+Selfwrite needs [Claude Code](https://code.claude.com/docs/en/overview) and, for the validators, Node.js 20 or newer. Claude Code authentication and billing options are documented in Anthropic's [setup guide](https://code.claude.com/docs/en/setup). Validator dependencies stay limited to YAML parsing and the Vitest suite listed in `package.json`.

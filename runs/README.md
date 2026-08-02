@@ -1,10 +1,18 @@
 # Example Runs
 
-These are real selfwrite runs preserved as examples of the tool in action. They come from different versions of selfwrite and use different directory layouts, so treat the most recent one as the source of truth for "what the output actually looks like today."
+These are historical selfwrite runs preserved as design evidence. One supplies a readability regression sample; the schema validators use synthetic fixtures under `tests/fixtures/`. None is workflow-current for schema v3, and none may be presented as proof that the v0.3 release gates passed. A workflow-current example must include `run.json`, exact prompt commit, artifact hashes, raw judge records, and—where applicable—source snapshots, `evidence.jsonl`, `claims.jsonl`, and a successful final audit.
 
-## Current format
+| Run | Recorded schema | Prompt commit |
+|---|---:|---|
+| `2026-04-01_011613` | not recorded | not recorded |
+| `claude-md-rewrite_2026-07-11_234935` | 2 | not recorded |
+| `readme-rewrite_2026-07-12_205214` | 2 | not recorded |
+| `nyt-upgrade` | not recorded | not recorded |
+| `skill-upgrade` | not recorded | not recorded |
 
-**`2026-04-01_011613/`** — Dark-money op-ed, deep rewrite, 30m, Op-Ed/Newsletter lexicon. This run uses the current directory layout produced by the tool today:
+## Legacy examples
+
+**`2026-04-01_011613/`** — Legacy dark-money op-ed. It is useful as a negative quality fixture: it predates v0.3 evidence provenance, blind judging, and final-hash release checks.
 
 ```
 rubric.md              # scoring dimensions, locked after generation
@@ -16,11 +24,7 @@ skill.md               # distilled skill file
 summary.md             # final metrics and learnings
 ```
 
-If you want to know what a fresh run will output, read this one.
-
-**`claude-md-rewrite_2026-07-11_234935/`** and **`readme-rewrite_2026-07-12_205214/`** — Two schema-v2 dogfood runs in which the loop rewrote this repo's own `CLAUDE.md` and `README.md`. Both use the current ledger discipline: `# schema_version: 2` atop `results.tsv`, a `state.json` hash reconciled after every iteration, drafts at `versions/v{N}-draft.md` with kept finals at `versions/v{N}.md` (a reverted iteration keeps only its draft — see claude-md-rewrite's iteration 4), and the run-root `draft.md` as the tracked artifact. Because REVISE often changed nothing after REVIEW, many draft/final pairs are byte-identical; that is the honest record, not an error.
-
-## Historical (older layouts)
+**`claude-md-rewrite_2026-07-11_234935/`** and **`readme-rewrite_2026-07-12_205214/`** — Schema-v2 dogfood runs. They demonstrate v2 ledger mechanics only, not the v0.3 judging or release protocol.
 
 **`nyt-upgrade/`** — Early run from before the skill distillation refactor. Uses `samples/` and `writing-nyt.md`/`writing-nyt-backup.md` instead of `versions/`, and has a `learnings.md` instead of `skill.md`. Kept because the research directory shows what the tool looked like in its earlier analytical form.
 
@@ -31,29 +35,22 @@ If you want to know what a fresh run will output, read this one.
 Any run's `skill.md` is a standalone, reusable skill file. To install the learnings from a past run into Claude Code:
 
 ```bash
-mkdir -p ~/.claude/skills
-cp runs/2026-04-01_011613/skill.md ~/.claude/skills/op-ed-dark-money.md
+mkdir -p ~/.claude/skills/op-ed-dark-money
+cp runs/2026-04-01_011613/skill.md ~/.claude/skills/op-ed-dark-money/SKILL.md
 ```
 
-Name the destination file something descriptive — Claude Code uses the filename as the skill name.
+Name the destination directory descriptively; Claude Code discovers the `SKILL.md` within it.
 
 ## Integrity note
 
-These directories double as **regression fixtures** for `tests/run-integrity.test.mjs` — the checker
-must keep flagging the known historical discrepancies (nyt-upgrade's ledger/artifact drift,
-skill-upgrade's missing iteration rows). Never "fix" or rewrite an old run.
+Do not rewrite these historical runs. Validator tests use synthetic schema-v3 fixtures; a readability test retains one historical dark-money artifact as a regression sample.
 
 ## Smoke-test checklist (manual, after skill-file changes)
 
 The skills need interactive Claude Code, so this can't run in CI. After editing the skill files:
 
-1. **`/selfresearch`, narrow question, 15m budget.** Verify: `node scripts/verify-quotes.mjs runs/<new>`
-   exits 0; the budget stop fired at a wave *start* (not mid-wave) if the run overran; `report.md` was
-   run through `readability-check` (violations logged or gate passed); any dry node shows `done_empty`
-   in the summary coverage rather than silently blocking dependents.
-2. **`/selfwrite`, short prose task, 30m, 3+ iterations.** Verify: the Score Agent runs as a fresh
-   subagent each SCORE; v0 is scored without baseline anchoring; `node scripts/run-integrity.mjs
-   runs/<new>` exits 0 at run end; results.tsv carries `# schema_version: 2`; hand-editing the
-   artifact mid-run makes the next `--preflight` hard-stop.
-3. **Negative probe.** Paste an "It's not X. It's Y." kicker into a draft — the Voice Auditor must
-   flag it (catalog row + `readability-check` candidate output).
+1. **`/selfresearch`, narrow question, 15m budget.** Verify original-text snapshots, evidence and claim ledgers, counter-queries, and `node scripts/evidence-check.mjs runs/<new> --json` before the final audit.
+2. **`/selfwrite`, short prose task, 30m.** Verify randomized blind A/B records for two judges and the tie-breaker when needed. Every late edit must be a numbered candidate.
+3. **`/selfinvestigate`, contradictory evidence.** Verify stance did not change relevance/confidence and the legal-risk gate ran for defamation-adjacent claims.
+4. **Final release.** `node scripts/run-audit.mjs runs/<new> --json` must report all four pass fields true and identical artifact, verified, and scored hashes.
+5. **Negative probes.** A generated-summary quote, title-only synthesis, missing evidence file, same-line-count artifact edit, retracted source, untagged factual claim, or post-score edit must block release.

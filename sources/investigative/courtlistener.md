@@ -2,15 +2,17 @@
 
 Used by `/selfinvestigate` for U.S. federal (and some state) court filings, opinions, oral arguments, and PACER-backed docket entries. Run by the Free Law Project.
 
+## v0.3 evidence contract
+
+Run neutral, confirming, and disconfirming docket queries, including dismissals, reversals, and later disposition; record failures. Record the source in schema-3 `sources.json` and retrieve/hash normalized original opinion, filing, docket-entry, or transcript text at `documents/<S-ID>.txt`. API metadata and snippets are not evidence. Only exact original text from a provenance-PASS stored record may enter `evidence.jsonl`. A filing proves the filing and its attributed assertions, not the allegations; preserve court, docket, document number, date, party, and procedural posture.
+
 ## Base URL
 
 ```
-https://www.courtlistener.com/api/rest/v3
+https://www.courtlistener.com/api/rest/v4
 ```
 
-**Free API key required** — register at `courtlistener.com/sign-up/`. The token must be sourced from an environment variable (e.g., `COURTLISTENER_API_TOKEN`) and injected at request time. Never paste the literal token into a prompt, card, subagent instruction, or trace artifact. Include as header: `Authorization: Token <REDACTED>` (the runtime swaps in the env value). WebFetch doesn't support arbitrary headers directly, so note the token reference (never the literal) in the call or fall back to the public endpoint where available.
-
-Rate limits: 5,000 req/hour with a token; lower without.
+Some v4 endpoints are public; authenticated access and limits depend on the current account and membership policy. For authenticated calls, use a header-capable client that reads `COURTLISTENER_API_TOKEN` from the environment. A WebFetch prompt cannot set the authorization header. Consult the live [v4 API root](https://www.courtlistener.com/api/rest/v4/) and [CourtListener help](https://www.courtlistener.com/help/) before a run.
 
 ## Endpoints used
 
@@ -76,7 +78,7 @@ For a docket:
 | `backend` | `"courtlistener"` |
 | `credibility_tier` | `1` (primary — court records) |
 | `abstract` | `case_name_full + " (" + court + ", " + date_filed + "). Nature of suit: " + nature_of_suit + ". Judge: " + assigned_to_str` |
-| `snippet_used` | Specific docket entry text or opinion passage relevant to the investigation |
+| `discovery_excerpt` | Relevance-only docket/opinion passage; never evidence |
 
 For an opinion:
 
@@ -89,14 +91,14 @@ For an opinion:
 | `year` | year of `date_filed` |
 | `venue` | court |
 | `abstract` | First 500 chars of `plain_text` |
-| `snippet_used` | The specific passage relevant to the claim |
+| `discovery_excerpt` | Relevance-only passage; never evidence |
 
 ## Calling from a subagent
 
 Search for a specific case:
 ```
 WebFetch(
-  url="https://www.courtlistener.com/api/rest/v3/search/?q=%22specific+case+name%22&type=d",
+  url="https://www.courtlistener.com/api/rest/v4/search/?q=%22specific+case+name%22&type=d",
   prompt="Parse CourtListener docket search results. Return a JSON array. For each docket: id, case_name, case_name_full, court, docket_number, date_filed, date_terminated (if present), nature_of_suit, assigned_to_str, cause, absolute_url."
 )
 ```
@@ -104,7 +106,7 @@ WebFetch(
 Retrieve opinion text:
 ```
 WebFetch(
-  url="https://www.courtlistener.com/api/rest/v3/opinions/<opinion_id>/",
+  url="https://www.courtlistener.com/api/rest/v4/opinions/<opinion_id>/",
   prompt="Parse the CourtListener opinion response. Return: id, case_name, court, date_filed, author_str, type, plain_text (the full opinion), and absolute_url. If plain_text is longer than 5000 chars, return the first 5000 chars and note plain_text_truncated: true."
 )
 ```
@@ -112,7 +114,7 @@ WebFetch(
 Find docket entries for a case:
 ```
 WebFetch(
-  url="https://www.courtlistener.com/api/rest/v3/docket-entries/?docket=<docket_id>&ordering=date_filed",
+  url="https://www.courtlistener.com/api/rest/v4/docket-entries/?docket=<docket_id>&ordering=date_filed",
   prompt="Parse docket entries. Return an array. For each entry: entry_number, date_filed, description, recap_documents array (each with filepath_ia, document_number, pacer_doc_id, description)."
 )
 ```
@@ -129,8 +131,8 @@ WebFetch(
 
 - **RECAP is not complete** — only documents someone paid to retrieve from PACER end up in RECAP. Absence from RECAP doesn't mean the document doesn't exist on PACER.
 - **PACER documents cost money** — if a filing isn't in RECAP, retrieving from PACER costs $0.10/page. CourtListener doesn't cover that; you have to pay directly via PACER if you need the document.
-- **State courts are spotty** — CourtListener's state coverage varies wildly. Some states are near-complete; others have almost nothing. Federal coverage is comprehensive.
-- **Opinion publication lag** — unpublished opinions may take months to index. Recent decisions may not appear immediately.
+- **Coverage varies.** Check the court and date range directly; absence from CourtListener does not establish that a record does not exist.
+- **Indexing is not instantaneous.** Check the court's official docket for consequential recent matters.
 - **Sealed filings** are invisible — the docket will show "SEALED DOCUMENT" as the description; the content isn't available. Note these in `missing_evidence.md` as deliberate gaps.
 - **OCR quality varies** — older filings scanned from paper may have OCR errors in plain_text. For exact quotes, cross-reference the PDF if available.
 - **Title case mismatches** — "United States v. Smith" and "U.S. v. Smith" may not match a naive search. Use variations.

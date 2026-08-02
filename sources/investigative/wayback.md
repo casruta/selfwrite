@@ -2,6 +2,10 @@
 
 Used by `/selfinvestigate` to resolve link rot, recover deleted or edited pages, date when content first appeared online, and capture pages that might be changed or removed during an active investigation.
 
+## v0.3 evidence contract
+
+Wayback is a carrier, not the publisher. Search multiple capture dates and digests, including snapshots that may contradict a change narrative. Record the source in schema-3 `sources.json` and store normalized capture text at `documents/<S-ID>.txt`; preserve original URL, snapshot URL/time, displayed publication date, CDX digest/status, retrieval time, stored capture, and content hash. CDX metadata, snippets, and summaries are not evidence. Only exact text from a provenance-PASS stored capture may enter `evidence.jsonl`. Verify it is content rather than an error/interstitial and keep original-source credibility separate from archive provenance.
+
 ## Base URLs
 
 - **Availability check**: `https://archive.org/wayback/available?url=<url>&timestamp=<YYYYMMDD>`
@@ -63,7 +67,7 @@ When a source is volatile (newsroom under pressure, politically-sensitive blog, 
 POST https://web.archive.org/save/<url>
 ```
 
-The page is fetched and archived within ~30 seconds. The resulting snapshot URL becomes the citable version.
+Submission and indexing time varies. Confirm that a valid snapshot is retrievable before treating its URL as citable; the Internet Archive's [Wayback help](https://archivesupport.zendesk.com/hc/en-us/articles/360004651732-Using-The-Wayback-Machine) notes that indexing can lag.
 
 ## Response → source record mapping
 
@@ -136,7 +140,7 @@ Example investigative signal: a company's "About Us" page digest changes within 
 - **JavaScript-rendered sites** archive poorly — dynamic content may appear blank in the snapshot. Check for this when the snapshot seems suspiciously empty.
 - **Robots.txt exclusions** — some sites block Wayback via robots.txt, past and present. Excluded sites show "This page is not available" even if they were once crawled.
 - **Snapshot sometimes lies** — if the original site returned an error at crawl time, Wayback may have cached the error page, not the real content.
-- **Save Page Now latency** — the saved snapshot URL may take up to 60 seconds to become available. Wait and retry before citing.
+- **Save Page Now latency varies.** Retry later and verify the stored content before citing.
 - **Cite the snapshot, not the live URL** — for any claim grounded in archived content, the citation must be the Wayback snapshot URL with timestamp; the live URL may mislead a future reader if the site has since changed.
 - **Original source credibility still applies** — Wayback doesn't launder credibility. A conspiracy blog's archived page is still a tier-5 source, not a primary document. The stored `credibility_tier` stays the original's tier; the verifier's one-tier Wayback penalty lives on the claim (`wayback_penalty_applied: true`), never written back into the source record.
-- **Snapshot age vs. present-tense claims** — a snapshot older than 18 months cannot be the sole support for a present-tense claim about an actor's current affiliation, role, or status; the sentence shifts to past tense with the snapshot date inline (see the Stage-5 hard rules in selfinvestigate.md).
+- **Snapshot age and tense** — a dated snapshot proves what the archived page showed then, not an actor's current status. Use past tense with the capture date unless a current source confirms the claim.

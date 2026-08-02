@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "task_id": "fixture",
+  "candidate_sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8",
+  "incumbent_sha256": "ffebcf6134797c0613ab1ef1bd9209c3bb3c49162b3d57053d24142b28678d45",
+  "artifact_bodies": {"candidate": "Line one of the draft.\nLine two.\nLine three.\nLine four.\nLine five.\n", "incumbent": "incumbent"},
+  "rubric": {"text": "Prefer the more accurate, faithful, clear response.", "sha256": "a65332c1e51a52d10569dea5dc9744e8f10bfbab016ade9b47dc53c4f9da3268"},
+  "pre_judgment_gates": {
+    "factual_preservation": {"passed": true, "artifact_sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8"},
+    "instruction_fidelity": {"passed": true, "artifact_sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8"}
+  },
+  "submissions": [
+    {
+      "judge_id": "judge-1",
+      "labels": {"A": "ffebcf6134797c0613ab1ef1bd9209c3bb3c49162b3d57053d24142b28678d45", "B": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8"},
+      "blind_artifacts": {"A": {"text": "incumbent", "sha256": "ffebcf6134797c0613ab1ef1bd9209c3bb3c49162b3d57053d24142b28678d45"}, "B": {"text": "Line one of the draft.\nLine two.\nLine three.\nLine four.\nLine five.\n", "sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8"}},
+      "rubric_sha256": "a65332c1e51a52d10569dea5dc9744e8f10bfbab016ade9b47dc53c4f9da3268",
+      "blind_input": "Rubric: Prefer the more accurate, faithful, clear response.\nA: anonymized incumbent/candidate\nB: anonymized incumbent/candidate",
+      "blind_input_sha256": "c2e8fd186f3c3752c375a56ac86ff38a74b3b35311c094db91433670858b4d80",
+      "randomization": {"algorithm": "sha256-seeded-v1", "seed": "clean-fixture"},
+      "submission_sha256": "905f9f916feddb0a04c146648bc74cf331e73abcb0bf82d70684b950bf1d32ca"
+    },
+    {
+      "judge_id": "judge-2",
+      "labels": {"A": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8", "B": "ffebcf6134797c0613ab1ef1bd9209c3bb3c49162b3d57053d24142b28678d45"},
+      "blind_artifacts": {"A": {"text": "Line one of the draft.\nLine two.\nLine three.\nLine four.\nLine five.\n", "sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8"}, "B": {"text": "incumbent", "sha256": "ffebcf6134797c0613ab1ef1bd9209c3bb3c49162b3d57053d24142b28678d45"}},
+      "rubric_sha256": "a65332c1e51a52d10569dea5dc9744e8f10bfbab016ade9b47dc53c4f9da3268",
+      "blind_input": "Rubric: Prefer the more accurate, faithful, clear response.\nA: anonymized incumbent/candidate\nB: anonymized incumbent/candidate",
+      "blind_input_sha256": "c2e8fd186f3c3752c375a56ac86ff38a74b3b35311c094db91433670858b4d80",
+      "randomization": {"algorithm": "sha256-seeded-v1", "seed": "clean-fixture"},
+      "submission_sha256": "f736cb8cebf5b7041e76fab1506f7ffdb286fb6eb1d51363d4bbb965b763c12a"
+    }
+  ],
+  "judgments": [
+    {"judge_id": "judge-1", "model": "fixture-judge", "version": "fixture-judge-1", "submission_sha256": "905f9f916feddb0a04c146648bc74cf331e73abcb0bf82d70684b950bf1d32ca", "raw_output": "{\"preference\":\"B\",\"rationale\":\"Candidate is clearer while preserving the five-line instruction.\"}", "raw_output_sha256": "fb591977f397adfee503d4ab2b9378e4f820f840030b218d96b48d2212701c9e", "preference": "B"},
+    {"judge_id": "judge-2", "model": "fixture-judge", "version": "fixture-judge-1", "submission_sha256": "f736cb8cebf5b7041e76fab1506f7ffdb286fb6eb1d51363d4bbb965b763c12a", "raw_output": "{\"preference\":\"A\",\"rationale\":\"Candidate is clearer while preserving the five-line instruction.\"}", "raw_output_sha256": "d759c23f5544f348ac1a0e35d9c5b0ef7035e5f9ad1a16bec9d8bb2a7d29edf6", "preference": "A"}
+  ],
+  "decision": {
+    "outcome": "candidate",
+    "selected_sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8",
+    "final_sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8",
+    "scored_sha256": "18979d68c74fc56079125435b49f3b31e02725168643d4ecfc3e8483cb567eb8",
+    "deterministic_constraint_improved": false
+  }
+}

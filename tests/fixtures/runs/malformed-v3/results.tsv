@@ -1,0 +1,5 @@
+# schema_version: 3
+iteration	decision
+0	baseline	extra
+2	keep
+2	revert

@@ -1,14 +1,16 @@
 {
   "name": "selfwrite",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
-  "description": "Self-improving writing skills for Claude Code (selfwrite, selfresearch, selfinvestigate)",
+  "description": "Auditable prose, research, and investigation skills for Claude Code",
   "private": true,
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "lint:skills": "node scripts/skill-lint.mjs",
     "check:run": "node scripts/run-integrity.mjs",
+    "check:evidence": "node scripts/evidence-check.mjs",
+    "check:judgment": "node scripts/judgment-check.mjs",
     "audit:run": "node scripts/run-audit.mjs"
   },
   "dependencies": {

@@ -2,13 +2,17 @@
 
 Used by `/selfresearch` for preprints in physics, CS, math, stats, quant-bio, and econ. Essential for timely ML and theory work. No peer review; cross-reference with Semantic Scholar or OpenAlex for citation validation.
 
+## v0.3 evidence contract
+
+Use this backend for discovery and original retrieval. Run direct, terminology-variant, and disconfirming counterqueries; persist exact queries and failures. Record accepted sources in schema-3 `sources.json`, then store and hash the normalized original arXiv text at `documents/<S-ID>.txt`. Metadata, snippets, abstracts standing in for available full text, and generated summaries are not evidence. Only exact text from the stored original may enter `evidence.jsonl`, after provenance PASS. Record version history and prefer the version of record when available.
+
 ## Base URL
 
 ```
-http://export.arxiv.org/api/query
+https://export.arxiv.org/api/query
 ```
 
-No API key. arXiv asks for **3 seconds between requests** to be polite; they don't enforce a hard limit but will throttle aggressive clients. In parallel waves, coordinator must serialize arXiv calls or use an exponential backoff on 503 responses.
+No API key. The official [arXiv API manual](https://info.arxiv.org/help/api/user-manual.html#3112-start-and-max-results-paging) asks clients to wait three seconds between sequential calls. Serialize calls and back off on service errors; do not infer a separate hard-limit policy.
 
 ## Endpoint
 
@@ -29,7 +33,7 @@ GET /query?search_query=<q>&start=<offset>&max_results=<n>&sortBy=<s>&sortOrder=
 
 Example:
 ```
-http://export.arxiv.org/api/query?search_query=abs:%22reward+hacking%22+AND+cat:cs.LG&max_results=30&sortBy=submittedDate&sortOrder=descending
+https://export.arxiv.org/api/query?search_query=abs:%22reward+hacking%22+AND+cat:cs.LG&max_results=30&sortBy=submittedDate&sortOrder=descending
 ```
 
 ## Response format
@@ -40,7 +44,7 @@ arXiv returns **Atom XML**, not JSON. Structure:
 <feed>
   <opensearch:totalResults>1234</opensearch:totalResults>
   <entry>
-    <id>http://arxiv.org/abs/2305.12345v2</id>
+    <id>https://arxiv.org/abs/2305.12345v2</id>
     <updated>2024-01-15T...</updated>
     <published>2023-05-20T...</published>
     <title>Paper title here</title>
@@ -48,7 +52,7 @@ arXiv returns **Atom XML**, not JSON. Structure:
     <author><name>First Author</name></author>
     <author><name>Second Author</name></author>
     <arxiv:primary_category term="cs.LG" />
-    <link title="pdf" href="http://arxiv.org/pdf/2305.12345v2" />
+    <link title="pdf" href="https://arxiv.org/pdf/2305.12345v2" />
     <arxiv:doi>10.xxxx/yyyy</arxiv:doi>  <!-- optional; only if formally published -->
   </entry>
   ...
@@ -59,7 +63,7 @@ arXiv returns **Atom XML**, not JSON. Structure:
 
 | Source record field | arXiv field |
 |---|---|
-| `canonical_id` | `arxiv:doi` if present, else arXiv ID from `<id>` (strip `http://arxiv.org/abs/` and version suffix like `v2`) |
+| `canonical_id` | `arxiv:doi` if present, else arXiv ID from `<id>` (strip the `https://arxiv.org/abs/` prefix and version suffix such as `v2`) |
 | `canonical_id_type` | `"doi"` or `"arxiv"` |
 | `title` | `<title>` (strip whitespace and newlines) |
 | `authors` | `<author><name>` array |
@@ -74,7 +78,7 @@ arXiv returns **Atom XML**, not JSON. Structure:
 
 ```
 WebFetch(
-  url="http://export.arxiv.org/api/query?search_query=<urlencoded>&max_results=30&sortBy=relevance",
+  url="https://export.arxiv.org/api/query?search_query=<urlencoded>&max_results=30&sortBy=relevance",
   prompt="Parse this Atom XML feed. Return a JSON array of entries. For each <entry>: arxiv_id (from <id>, strip prefix and version), doi (from <arxiv:doi> if present), title (strip whitespace), authors as array from <author><name>, published_year from <published>, primary_category from <arxiv:primary_category term>, pdf_url from <link title='pdf'>, abstract from <summary>."
 )
 ```

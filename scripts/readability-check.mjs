@@ -17,7 +17,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
-import { analyzeReadability, AUDIENCES, THRESHOLDS } from '../lib/readability.mjs';
+import { analyzeReadability, AUDIENCES, THRESHOLDS, normalizeAudience } from '../lib/readability.mjs';
 import { parseArgs, fail } from '../lib/cli.mjs';
 
 const { positional, flags } = parseArgs(process.argv);
@@ -27,9 +27,10 @@ const file = positional[0];
 if (!file) fail('usage: readability-check.mjs <file.md> [--audience=...] [--kill-list=...] [--json]', json);
 if (!existsSync(file)) fail(`file not found: ${file}`, json);
 
-const audience = flags.audience ?? 'default';
-if (!AUDIENCES.includes(audience)) {
-  fail(`unknown audience '${audience}' (expected: ${AUDIENCES.join(', ')})`, json);
+const audienceInput = flags.audience ?? 'default';
+const audience = normalizeAudience(audienceInput);
+if (!audience) {
+  fail(`unknown audience '${audienceInput}' (expected: ${AUDIENCES.join(', ')} or a documented intake alias)`, json);
 }
 
 let killList = null;
@@ -52,7 +53,7 @@ if (json) {
   console.log(`file: ${file}`);
   console.log(`audience: ${audience}${t ? ` (FK <= ${t.fk}, avg <= ${t.avgSentenceWords}w, max ${t.maxSentenceWords}w)` : ' (no gate; stats only)'}`);
   console.log(`fk_grade: ${report.fk_grade}   avg_sentence_words: ${report.avg_sentence_words}   max_sentence_words: ${report.max_sentence_words}`);
-  console.log(`words: ${report.word_count}   sentences: ${report.sentence_count}`);
+  console.log(`words: ${report.word_count}   sentences: ${report.sentence_count}   analyzed coverage: ${(report.analyzed_visible_word_coverage * 100).toFixed(1)}%`);
   if (report.negation_antithesis.length) {
     console.log(`negation-antithesis candidates (${report.negation_antithesis.length}):`);
     for (const h of report.negation_antithesis) console.log(`  line ${h.line}: ${h.text}`);

@@ -2,13 +2,17 @@
 
 Used by `/selfinvestigate` for U.S. corporate filings: annual and quarterly reports, material event disclosures, proxy statements with executive compensation, insider trading, and institutional holdings. All public; no API key required.
 
+## v0.3 evidence contract
+
+Run symmetric searches across issuer names/CIKs, form types, accession numbers, amendments, date ranges, and contrary disclosures; record failures. Record the source in schema-3 `sources.json` and store/hash normalized authoritative filing text at `documents/<S-ID>.txt`, retaining endpoint parameters and pagination. Search text and third-party summaries are not evidence. Only exact original filing text/fields from a provenance-PASS stored document may enter `evidence.jsonl`. Distinguish issuer assertions from established facts and do not infer intent or misconduct from timing alone.
+
 ## Base URLs
 
 - JSON data API: `https://data.sec.gov`
 - Full-text search: `https://efts.sec.gov/LATEST/search-index`
 - Web filings browser: `https://www.sec.gov/cgi-bin/browse-edgar`
 
-SEC requires a `User-Agent` header identifying your app and contact email on every request. Omit it and you get 403. Example: `User-Agent: selfinvestigate research/1.0 user@example.com`. Pass this via the `WebFetch` prompt or use the `Accept` / user-agent in the call.
+SEC asks automated clients to send a declared `User-Agent` header with application and contact information. Use a header-capable HTTP client; a WebFetch prompt cannot set this header. Follow the SEC's current [EDGAR access guidance](https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data).
 
 ## Endpoints used
 
@@ -86,12 +90,14 @@ For each filing identified:
 | `year` | year portion of filing_date |
 | `venue` | `"SEC EDGAR ({form_type})"` |
 | `backend` | `"sec_edgar"` |
-| `credibility_tier` | `1` (primary — filed under penalty of perjury) |
+| `credibility_tier` | `1` (primary issuer filing; assertion and certification status depends on the form) |
 | `abstract` | Form-specific summary (e.g., for 8-K: the Item number and brief description; for 10-K: the Business Overview section first 500 chars) |
-| `snippet_used` | The specific passage relevant to the investigation |
+| `discovery_excerpt` | Relevance-only passage; never evidence |
 | `open_access_pdf_url` | `https://www.sec.gov/Archives/edgar/data/{CIK}/{accession_no_dashes}/{primary_doc}` |
 
 ## Calling from a subagent
+
+The examples below describe parsing tasks. Retrieve each URL first with a header-capable client that follows SEC access policy, then provide the saved response to the subagent. Do not assume a prompt changes outbound HTTP headers.
 
 For company history:
 ```
@@ -126,8 +132,8 @@ WebFetch(
 
 ## Caveats
 
-- **User-Agent mandatory** — every request must include `User-Agent: AppName user@example.com` or SEC returns 403. Document this in the WebFetch prompt so the agent includes it.
-- **10-K length** — a typical large-cap 10-K is 200-400 pages HTML. Don't pull the whole thing; use section-targeted queries or the full-text search API.
+- **Identify automated requests.** Set the declared User-Agent in the HTTP client and follow the current SEC access policy.
+- **Filings can be long.** Prefer section-targeted retrieval while retaining enough surrounding text for exact evidence verification.
 - **XBRL structured data** — for financial facts (revenue, expenses, exec comp), XBRL companyfacts is far better than parsing the 10-K text. Use it for any quantitative claim.
 - **Insider definitions** — Form 4 insiders are Section 16 officers and directors. It excludes beneficial owners below 10% and many consultants. Don't assume "insider" in investigative sense == Section 16 filer.
 - **Rate limits** — 10 req/sec per IP (per SEC fair use policy). Exceed this and they throttle. Coordinator should serialize SEC calls or insert brief delays.

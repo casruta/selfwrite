@@ -2,15 +2,17 @@
 
 Used by `/selfinvestigate` for money-in-politics synthesis: industry and sector totals, candidate summaries, organization profiles, lobbying expenditures. OpenSecrets reprocesses FEC data plus Senate LDA lobbying filings into analyst-ready aggregates. Use it when you want the synthesized view; use FEC directly for raw transactional data.
 
-## Base URL
+## v0.3 evidence contract
 
-```
-https://www.opensecrets.org/api
-```
+OpenSecrets is normally a discovery/secondary aggregation source. Run neutral, confirming, and disconfirming searches and record failures. Record the source in schema-3 `sources.json`, preserve methodology/date/scope, and trace consequential figures to FEC or Senate LDA originals when feasible. Store/hash normalized page text at `documents/<S-ID>.txt`. Snippets, charts without underlying values/methods, and summaries are not evidence; only exact original text/values from a provenance-PASS stored document may enter `evidence.jsonl`. Association does not establish motive or coordination.
 
-**Free API key required** — register at `opensecrets.org/api`. Keys must be sourced from an environment variable (e.g., `OPENSECRETS_API_KEY`) and injected at request time. Never paste the literal key into a prompt, card, subagent instruction, or trace artifact. Include `&apikey=<REDACTED>` on every request (the runtime swaps in the env value). Also include `&output=json` (default is XML, which is harder to parse).
+## Current access
 
-## Endpoints used
+OpenSecrets discontinued self-service public API registration in April 2025. Use the [OpenSecrets website](https://www.opensecrets.org/) as a secondary discovery source, preserve the page and its methodology, and trace consequential amounts to OpenFEC or Senate lobbying filings. Do not design a new run around API access.
+
+The endpoint descriptions below are retained only to interpret old run artifacts or a response obtained with separately confirmed legacy access. They are not a current onboarding guide. Never place a legacy key in a prompt or trace.
+
+## Legacy endpoint reference
 
 ### 1. Candidate summary
 
@@ -107,18 +109,13 @@ Map into a source record:
 | `backend` | `"opensecrets"` |
 | `credibility_tier` | `2` (authoritative secondary) — reprocessed from FEC primaries |
 | `abstract` | Serialized summary of the returned data (top 10 contributors, industry rollup, etc.) |
-| `snippet_used` | Same; typically 200-600 chars of structured summary |
+| `discovery_excerpt` | Relevance-only structured summary; never evidence |
 
 For individual contributor rows inside a response, don't create separate sources — they're aggregated views. Extract as **actor records** (for `actors.json`) with funding_in / funding_out populated from the OpenSecrets relationships.
 
 ## Calling from a subagent
 
-```
-WebFetch(
-  url="https://www.opensecrets.org/api/?method=candContrib&cid=N00036346&cycle=2020&apikey=<REDACTED>&output=json",
-  prompt="Parse OpenSecrets candidate contributor response. Return a JSON object with: candidate_cid, cycle, source, and contributors array. Each contributor has org_name, total, indivs (individual contributions), pacs (PAC contributions). Sort contributors by total desc."
-)
-```
+Fetch public OpenSecrets pages for discovery. If an operator has separately verified legacy API access, a credential-aware HTTP helper may fetch the response and pass only redacted data to the parsing subagent. WebFetch does not inject `OPENSECRETS_API_KEY`.
 
 ## Actor extraction from OpenSecrets
 
@@ -137,12 +134,11 @@ This builds the actor map faster than waiting for individual FEC contributions t
 ## Caveats
 
 - **Aggregation hides individuals** — OpenSecrets rolls up to organizations; individual executive donations are invisible here. Use FEC for specific person → candidate tracking.
-- **Employer attribution is heuristic** — OpenSecrets attributes donations to the parent company based on employer text on FEC filings. Free-text employer fields are noisy; attributions have a few percent error rate.
+- **Employer attribution is heuristic** — organization totals depend on matching free-text employer fields and parent organizations. Treat the result as an aggregation to verify, not an exact transactional fact.
 - **Industry codes are coarse** — "Hedge Funds & Private Equity" bundles many distinct actors. For precision, drill into the constituent organizations.
-- **Lobbying data lags** — quarterly LDA filings appear in OpenSecrets 1-2 months after the filing deadline.
+- **Aggregation can lag originals.** Check the relevant filing system for the latest available record.
 - **No state or local** — federal only. For state lobbying or state campaign finance, use FollowTheMoney.org or state-level systems.
-- **API key required** — without it, every call fails. Runtime pulls the key from an env var (e.g., `OPENSECRETS_API_KEY`) and injects it into the outbound request. Never hardcode, never paste into a prompt, and never let the literal key reach any run artifact.
-- **Rate limits** — 200 calls/day on the free tier. Plan wave budgets accordingly; cache aggressively.
+- **Legacy API access is not assumed.** New users should use public pages and primary filing systems.
 
 ## Security
 

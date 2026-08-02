@@ -4,8 +4,8 @@
 // One-command audit of a run directory: merges every applicable validator
 // into a single verdict. Wraps (in order):
 //   - run-ledger consistency        (lib/run-integrity.mjs)
-//   - verbatim quote verification   (lib/quotes.mjs; only if quotes.jsonl
-//                                    + sources.json exist)
+//   - legacy quote verification     (lib/quotes.mjs, when present)
+//   - schema-v3 evidence validation (lib/evidence.mjs, research modes)
 //   - readability + AI-tell scan    (lib/readability.mjs; on the resolved
 //                                    artifact, kill-list from config/)
 //   - near-duplicate detection      (lib/near-dupes.mjs; only if
@@ -13,46 +13,58 @@
 //
 // Usage:
 //   node scripts/run-audit.mjs <run_dir> [--audience=default|general|expert]
-//        [--artifact=path] [--json]
+//        [--artifact=path] [--legacy] [--json]
 //
 // Exit codes:
-//   0   no error-level findings (readability violations and near-dupe pairs
-//       are reported as warnings — they gate scores inside the loop, not
-//       this audit)
-//   1   integrity errors or fabricated quotes
+//   0   every required release gate passed
+//   1   integrity, evidence, or quality gate failed
 //   2   unreadable run dir / arg error
 
 import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { checkRunConsistency } from '../lib/run-integrity.mjs';
 import { verifyQuotesFile } from '../lib/quotes.mjs';
-import { analyzeReadability, AUDIENCES } from '../lib/readability.mjs';
+import { analyzeReadability, AUDIENCES, normalizeAudience } from '../lib/readability.mjs';
 import { nearDupePairs, parseRecords } from '../lib/near-dupes.mjs';
+import { validateEvidenceRun } from '../lib/evidence.mjs';
+import { validateJudgmentRecord } from '../lib/judgments.mjs';
 import { parseArgs, fail } from '../lib/cli.mjs';
 
 const { positional, flags } = parseArgs(process.argv);
 const json = flags.json === true;
 const runDir = positional[0];
+process.on('uncaughtException', (error) => fail(`cannot complete audit: ${error.message}`, json));
+process.on('unhandledRejection', (error) => fail(`cannot complete audit: ${error?.message ?? error}`, json));
 
-if (!runDir) fail('usage: run-audit.mjs <run_dir> [--audience=...] [--artifact=path] [--json]', json);
+if (!runDir) fail('usage: run-audit.mjs <run_dir> [--audience=...] [--artifact=path] [--legacy] [--json]', json);
 if (!existsSync(runDir)) fail(`run directory not found: ${runDir}`, json);
+const runRoot = resolve(runDir);
 
-const audience = flags.audience ?? 'default';
-if (!AUDIENCES.includes(audience)) fail(`unknown audience '${audience}' (expected: ${AUDIENCES.join(', ')})`, json);
+const requestedAudience = flags.audience === undefined ? undefined : normalizeAudience(flags.audience);
+if (flags.audience !== undefined && !requestedAudience) fail(`unknown audience '${flags.audience}' (expected: ${AUDIENCES.join(', ')} or a documented intake alias)`, json);
 
 const report = { run_dir: runDir, sections: {}, errors: 0, warnings: 0 };
 
 // 1. ledger integrity (always)
-const integrity = checkRunConsistency(runDir, typeof flags.artifact === 'string' ? { artifact: flags.artifact } : {});
+const integrity = checkRunConsistency(runRoot, {
+  ...(typeof flags.artifact === 'string' ? { artifact: flags.artifact } : {}),
+  legacy: flags.legacy === true,
+});
 report.sections.integrity = integrity;
 report.errors += integrity.summary?.errors ?? 0;
 report.warnings += integrity.summary?.warns ?? 0;
+const audience = requestedAudience ?? integrity.audience ?? 'default';
 
-// 2. quotes (only when both files exist)
+// 2. Legacy quote pair. Exactly one file is always an integrity failure.
 const quotesPath = join(runDir, 'quotes.jsonl');
 const sourcesPath = join(runDir, 'sources.json');
+if (!integrity.evidence_required && existsSync(quotesPath) !== existsSync(sourcesPath)) {
+  report.sections.quotes = { ok: false, pass: false, error: 'quotes.jsonl and sources.json must either both exist or both be absent' };
+  report.errors += 1;
+}
 if (existsSync(quotesPath) && existsSync(sourcesPath)) {
   const quotes = verifyQuotesFile(readFileSync(quotesPath, 'utf8'), readFileSync(sourcesPath, 'utf8'));
   report.sections.quotes = quotes;
@@ -65,10 +77,45 @@ if (existsSync(quotesPath) && existsSync(sourcesPath)) {
   }
 }
 
-// 3. readability on the resolved artifact (advisory at audit level).
+// Schema-v3 research modes use sources + evidence/claims JSONL + documents.
+// Parse every record here so mere file presence can never become an evidence pass.
+if (integrity.evidence_required) {
+  const evidence = validateEvidenceRun(runRoot);
+  report.sections.evidence = evidence;
+  report.errors += evidence.summary?.errors ?? evidence.errors?.length ?? 0;
+}
+
+// Releasable prose runs must preserve one aggregate, validator-compatible
+// record for the final blind comparison. Per-judge files may also be kept.
+const judgmentRequired = integrity.run_type === 'selfwrite' && integrity.status === 'releasable';
+const judgmentPath = join(runRoot, 'judgments', 'final.json');
+if (judgmentRequired || existsSync(judgmentPath)) {
+  if (!existsSync(judgmentPath)) {
+    report.sections.judgment = { valid: false, pass: false, errors: [{ path: 'judgments/final.json', message: 'final blind judgment record is required' }] };
+    report.errors += 1;
+  } else {
+    try {
+      const judgment = validateJudgmentRecord(JSON.parse(readFileSync(judgmentPath, 'utf8')));
+      const artifactHash = integrity.artifact && existsSync(join(runRoot, integrity.artifact))
+        ? createHash('sha256').update(readFileSync(join(runRoot, integrity.artifact))).digest('hex') : null;
+      if (judgment.valid && artifactHash && JSON.parse(readFileSync(judgmentPath, 'utf8')).decision?.final_sha256 !== artifactHash) {
+        judgment.valid = false;
+        judgment.errors.push({ path: 'decision.final_sha256', message: 'must match the delivered artifact hash' });
+      }
+      judgment.pass = judgment.valid;
+      report.sections.judgment = judgment;
+      if (!judgment.pass) report.errors += Math.max(1, judgment.errors.length);
+    } catch (error) {
+      report.sections.judgment = { valid: false, pass: false, errors: [{ path: 'judgments/final.json', message: `cannot parse judgment record: ${error.message}` }] };
+      report.errors += 1;
+    }
+  }
+}
+
+// 3. Readability and deterministic editorial-quality gates.
 // checkRunConsistency already resolved the artifact — reuse it instead of
 // re-reading state.json (also avoids crashing on malformed state.json).
-const artifactPath = integrity.artifact ? join(runDir.replace(/\/+$/, ''), integrity.artifact) : null;
+const artifactPath = integrity.artifact ? join(runRoot, integrity.artifact) : null;
 if (artifactPath && existsSync(artifactPath)) {
   let killList = null;
   // resolve relative to this script so the audit works from any cwd
@@ -87,8 +134,21 @@ if (artifactPath && existsSync(artifactPath)) {
     tricolon_paragraphs: readability.tricolon_paragraphs,
     undefined_acronyms: readability.acronyms.filter((a) => !a.defined),
     kill_list_hits: readability.kill_list_hits,
+    power_position_hits: readability.power_position_hits,
+    analyzed_visible_word_coverage: readability.analyzed_visible_word_coverage,
+    finding_counts: {
+      violations: readability.violations.length,
+      negation_antithesis: readability.negation_antithesis.length,
+      tricolons: readability.tricolon_paragraphs.length,
+      undefined_acronyms: readability.acronyms.filter((a) => !a.defined).length,
+      kill_list_hits: readability.kill_list_hits.length,
+      power_position_hits: readability.power_position_hits.length,
+    },
+    pass: readability.pass,
   };
-  report.warnings += readability.violations.length + readability.negation_antithesis.length;
+  report.warnings += readability.violations.length + readability.negation_antithesis.length +
+    readability.tricolon_paragraphs.length + report.sections.readability.undefined_acronyms.length +
+    readability.kill_list_hits.length;
 }
 
 // 4. near-dupes (advisory; only when the record files exist)
@@ -112,7 +172,13 @@ for (const t of dupeTargets) {
   report.warnings += dupes.count;
 }
 
-report.pass = report.errors === 0;
+report.integrity_pass = integrity.valid === true;
+report.evidence_pass = integrity.evidence_required
+  ? report.sections.evidence?.pass === true
+  : (report.sections.quotes ? report.sections.quotes.ok === true && report.sections.quotes.pass === true : true);
+report.quality_pass = report.sections.readability?.pass === true && (!judgmentRequired || report.sections.judgment?.pass === true);
+report.release_pass = !integrity.legacy && integrity.status === 'releasable' && report.integrity_pass && report.evidence_pass && report.quality_pass;
+report.pass = report.release_pass;
 
 if (json) {
   process.stdout.write(JSON.stringify(report, null, 2) + '\n');
@@ -132,7 +198,7 @@ if (json) {
     if (v.ok === false) console.log(`  ${k}: UNPARSEABLE — ${v.error}`);
     else if (v.count > 0) console.log(`  ${k}: ${v.count} candidate pairs`);
   }
-  console.log(`errors: ${report.errors}   warnings: ${report.warnings}   ${report.pass ? 'PASS' : 'FAIL'}`);
+  console.log(`integrity: ${report.integrity_pass ? 'PASS' : 'FAIL'}   evidence: ${report.evidence_pass ? 'PASS' : 'FAIL'}   quality: ${report.quality_pass ? 'PASS' : 'FAIL'}   release: ${report.release_pass ? 'PASS' : 'FAIL'}`);
 }
 
-process.exit(report.pass ? 0 : 1);
+process.exit(report.release_pass ? 0 : 1);

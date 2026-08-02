@@ -2,13 +2,17 @@
 
 Used by `/selfinvestigate` for U.S. federal campaign finance data: donations, expenditures, PAC filings, super PAC independent expenditures. Covers presidential, Senate, and House races plus party committees.
 
+## v0.3 evidence contract
+
+Run symmetric searches across aliases, IDs, date windows, amendments, refunds, and opposite hypotheses; record empty results. Record the source in schema-3 `sources.json` and retain/hash normalized authoritative response or filing text at `documents/<S-ID>.txt`. An API response may be an original record only when endpoint, parameters, retrieval time, pagination, and raw response are stored. Extract exact original fields/text into `evidence.jsonl`; UI snippets and third-party summaries are not evidence. A transaction does not establish motive, coordination, control, or illegality.
+
 ## Base URL
 
 ```
 https://api.open.fec.gov/v1
 ```
 
-No API key required for basic use, but requests without a key are rate-limited aggressively. Get a free key at `api.data.gov/signup/`. The key must be sourced from an environment variable (e.g., `FEC_API_KEY`) and injected at request time. Never paste the literal key into a prompt, card, subagent instruction, or trace artifact. Append `&api_key=<REDACTED>` to every request (the runtime swaps in the env value) — raises the quota to 1000 req/hour.
+OpenFEC supports a public `DEMO_KEY` for exploration and free API keys for regular use. Use a query-capable HTTP helper that reads `FEC_API_KEY` from the environment and redacts it from logs; this repository does not inject secrets into WebFetch calls. Confirm access and limits in the [official OpenFEC developer documentation](https://api.open.fec.gov/developers/).
 
 ## Endpoints used
 
@@ -26,7 +30,7 @@ Returns candidate_id, party, office sought, state/district, election years. Use 
 GET /schedules/schedule_a/?contributor_name=<name>&two_year_transaction_period=<year>&per_page=100&api_key=<REDACTED>
 ```
 
-Returns every individual donation above the itemization threshold ($200 for federal candidates). Fields: contributor name, employer, occupation, amount, date, recipient committee, committee type.
+Returns itemized receipts. A committee generally itemizes a contribution when a receipt exceeds $200 or the contributor's aggregate crosses $200; later smaller transactions may therefore appear. See the FEC's [reporting guidance](https://www.fec.gov/help-candidates-and-committees/filing-reports/individual-contributions/). Fields include contributor name, employer, occupation, amount, date, and recipient committee.
 
 Other filters:
 - `contributor_employer=<string>` — donations from employees of a specific company (fuzzy match)
@@ -79,7 +83,7 @@ Every FEC endpoint returns:
 }
 ```
 
-For each donation record, build a source record:
+For each donation record, build a temporary discovery candidate, then persist the raw authoritative response and schema-3 document record:
 
 | Source record field | FEC field |
 |---|---|
@@ -92,23 +96,18 @@ For each donation record, build a source record:
 | `backend` | `"fec"` |
 | `credibility_tier` | `1` (primary) — FEC is first-party government filings |
 | `abstract` | Concatenated: `"{contributor_name} ({contributor_employer}, {contributor_occupation}) contributed ${amount} to {committee_name} on {contribution_receipt_date}. Committee type: {committee_type}."` |
-| `snippet_used` | Same as abstract for this backend |
+| `discovery_excerpt` | Relevance-only normalized fields; never evidence |
 
 Also persist each FEC record as a **timeline event** (`timeline.json`) with:
 - `event_type`: `"donation"` (or `"disbursement"`, `"independent_expenditure"`)
 - `date`: contribution_receipt_date
 - `actors_involved`: [contributor_actor_id, recipient_actor_id, employer_actor_id_if_entity]
 - `financial_amount`: amount
-- `source_ids`: [S-ID for this record]
+- `evidence_ids`: [E-ID extracted from the stored FEC response]
 
 ## Calling from a subagent
 
-```
-WebFetch(
-  url="https://api.open.fec.gov/v1/schedules/schedule_a/?contributor_name=Adelson&two_year_transaction_period=2020&per_page=100&api_key=<REDACTED>",
-  prompt="Parse FEC Schedule A results. Return a JSON array of donation records. For each: sub_id, contributor_name, contributor_employer, contributor_occupation, contributor_city, contributor_state, contribution_receipt_date, contribution_receipt_amount, committee_name, committee_id, committee_type. Include pagination.page, pagination.pages, pagination.count at the top level."
-)
-```
+Fetch with a credential-aware helper, then pass only the redacted response to the parsing subagent. Ask it to return `sub_id`, contributor identity fields, receipt date and amount, committee fields, and pagination. Never place the real query key in a model prompt or persisted URL.
 
 For large result sets (>100 records), iterate through pages by incrementing `&page=N` until `pagination.pages` is reached or the retrieval ceiling is hit.
 
@@ -129,11 +128,11 @@ Any donations in the ±90-day window are surfaced as potentially correlated with
 
 ## Caveats
 
-- **Itemization threshold** — donations under $200 per cycle aren't itemized. For federal candidates, aggregate small-dollar totals are available but individual names are not.
+- **Itemization is cumulative.** A receipt at or below $200 can appear after the contributor's aggregate crosses the reporting threshold. Do not infer that every listed row individually exceeded $200.
 - **State races aren't covered** — FEC is federal only. State campaign finance requires state-level systems (FollowTheMoney.org aggregates many, or direct state SoS databases).
 - **Dark money** — 501(c)(4)s and some LLCs don't disclose donors. FEC shows the LLC name as contributor; the actual beneficial owner may be hidden. Cross-reference with OpenSecrets for partial disclosure.
 - **Disbursement descriptions are freeform text** — "consulting services" could be anything. Pair with disbursement recipient research to interpret.
-- **Rate limits** — 1000 req/hour with key; 30 req/hour without. In heavy-use waves, coordinator must throttle or batch.
+- **Access limits can change.** Read the current OpenFEC documentation, throttle, and batch aggregation queries.
 - **Aggregation endpoints are your friend** — use `/by_employer/`, `/by_size/`, `/totals/` when you need summaries; don't download every row and aggregate locally.
 
 ## Security

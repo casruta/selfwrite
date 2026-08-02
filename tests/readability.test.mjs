@@ -14,6 +14,7 @@ import {
   analyzeReadability,
   THRESHOLDS,
   AUDIENCES,
+  normalizeAudience,
 } from '../lib/readability.mjs';
 
 describe('countSyllables', () => {
@@ -48,7 +49,7 @@ describe('splitSentences', () => {
 });
 
 describe('stripMarkdown / proseLines', () => {
-  it('drops headings, code fences, and tables but keeps link text', () => {
+  it('analyzes headings and tables, drops code fences, and keeps link text', () => {
     const md = [
       '# Title',
       '',
@@ -64,9 +65,9 @@ describe('stripMarkdown / proseLines', () => {
     ].join('\n');
     const prose = stripMarkdown(md);
     expect(prose).toContain('A sentence with a link in it.');
-    expect(prose).not.toContain('Title');
+    expect(prose).toContain('Title');
     expect(prose).not.toContain('excluded');
-    expect(prose).not.toContain('col');
+    expect(prose).toContain('col');
   });
 });
 
@@ -101,13 +102,42 @@ describe('analyzeReadability — core stats', () => {
     expect(r.pass).toBe(false);
   });
 
-  it('general audience uses tighter thresholds; expert never fails', () => {
+  it('general audience uses tighter prose thresholds; expert is exempt from those thresholds', () => {
     const mid = 'The intergovernmental negotiation concerning administrative harmonization proceeded slowly. ' .repeat(4);
     const general = analyzeReadability(mid, { audience: 'general' });
     const expert = analyzeReadability(mid, { audience: 'expert' });
     expect(general.pass).toBe(false);
     expect(expert.pass).toBe(true);
     expect(AUDIENCES).toContain('expert');
+  });
+
+  it('maps intake audience labels to CLI audiences', () => {
+    expect(normalizeAudience('scholarly')).toBe('expert');
+    expect(normalizeAudience('educated generalist')).toBe('general');
+    expect(normalizeAudience('undergraduate')).toBe('general');
+    expect(normalizeAudience('policy')).toBe('default');
+    expect(normalizeAudience('unknown')).toBeNull();
+  });
+
+  it('fails coverage when most visible content is hidden in code fences', () => {
+    const text = ['A short introduction.', '```text', 'dense hidden content '.repeat(30), '```'].join('\n');
+    const r = analyzeReadability(text);
+    expect(r.analyzed_visible_word_coverage).toBeLessThan(0.9);
+    expect(r.violations.some((v) => v.startsWith('analyzed_visible_word_coverage'))).toBe(true);
+    expect(r.pass).toBe(false);
+  });
+
+  it('enforces analysis coverage for expert audiences too', () => {
+    const text = ['Short prose.', '```text', 'hidden '.repeat(200), '```'].join('\n');
+    const r = analyzeReadability(text, { audience: 'expert' });
+    expect(r.analyzed_visible_word_coverage).toBeLessThan(0.9);
+    expect(r.pass).toBe(false);
+  });
+
+  it('includes prose in table cells in readability stats', () => {
+    const r = analyzeReadability('| Finding | Explanation |\n|---|---|\n| Result | Institutionalization complicates interpretation. |');
+    expect(r.word_count).toBeGreaterThan(4);
+    expect(r.analyzed_visible_word_coverage).toBe(1);
   });
 });
 
@@ -131,6 +161,12 @@ describe('analyzeReadability — AI-tell candidates', () => {
     const doj = r.acronyms.find((a) => a.acronym === 'DOJ');
     expect(fec.defined).toBe(true);
     expect(doj.defined).toBe(false);
+  });
+
+  it('does not accept bare parenthetical acronyms or years as expansions', () => {
+    const r = analyzeReadability('Another body (DOJ) opened a case. The FEC (2020) report followed.');
+    expect(r.acronyms.find((a) => a.acronym === 'DOJ').defined).toBe(false);
+    expect(r.acronyms.find((a) => a.acronym === 'FEC').defined).toBe(false);
   });
 
   it('counts kill-list hits with word boundaries', () => {

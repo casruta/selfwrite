@@ -7,7 +7,7 @@
 // artifact edits made outside the logged loop.
 //
 // Usage:
-//   node scripts/run-integrity.mjs <run_dir> [--artifact=path] [--json]
+//   node scripts/run-integrity.mjs <run_dir> [--artifact=path] [--legacy] [--json]
 //   node scripts/run-integrity.mjs <run_dir> --preflight [--artifact=path] [--json]
 //
 // Exit codes:
@@ -21,10 +21,15 @@ import { parseArgs, fail } from '../lib/cli.mjs';
 const { positional, flags } = parseArgs(process.argv);
 const json = flags.json === true;
 const runDir = positional[0];
+process.on('uncaughtException', (error) => fail(`cannot read run: ${error.message}`, json));
+process.on('unhandledRejection', (error) => fail(`cannot read run: ${error?.message ?? error}`, json));
 
-if (!runDir) fail('usage: run-integrity.mjs <run_dir> [--preflight] [--artifact=path] [--json]', json);
+if (!runDir) fail('usage: run-integrity.mjs <run_dir> [--preflight] [--artifact=path] [--legacy] [--json]', json);
 
-const opts = typeof flags.artifact === 'string' ? { artifact: flags.artifact } : {};
+const opts = {
+  ...(typeof flags.artifact === 'string' ? { artifact: flags.artifact } : {}),
+  legacy: flags.legacy === true,
+};
 
 if (flags.preflight === true) {
   const r = preflightCheck(runDir, opts);

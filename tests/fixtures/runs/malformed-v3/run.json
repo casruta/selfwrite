@@ -1,0 +1,12 @@
+{
+  "schema_version": 3,
+  "run_type": "selfwrite",
+  "prompt_commit": "test-commit",
+  "artifact": "draft.md",
+  "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "verified_artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "scored_artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "audience": "default",
+  "status": "releasable",
+  "release_gates": {}
+}

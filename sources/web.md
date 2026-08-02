@@ -4,6 +4,10 @@ Used by `/selfresearch` when a sub-question needs non-academic context: news cov
 
 > **MCP upgrade:** if an Exa or Tavily MCP tool is connected, it IS the web backend — structured results with full text, same source-record shape — and the WebFetch patterns below are the no-key fallback. Detection and setup live in `sources/mcp-backends.md`.
 
+## v0.3 evidence contract
+
+Search results are discovery aids only. For every conclusion-bearing question run a direct query, terminology variant, and disconfirming counterquery; record queries, result dates, and failed retrievals. Follow results to the canonical original, validate redirects/publisher/date/completeness, record it in schema-3 `sources.json`, and store the normalized original text at `documents/<S-ID>.txt` with its hash. Snippets, answer-engine prose, cached previews, and generated summaries must never enter `evidence.jsonl`; evidence is exact original text from a provenance-PASS document. Do not draft while searching.
+
 ## When to use
 
 The planner subagent should tag a sub-question for web backend only if:
@@ -63,14 +67,14 @@ Web sources don't have structured metadata, so the parsing LLM must infer fields
 | `citation_count` | null |
 | `open_access_pdf_url` | URL if the content is a PDF; else null |
 | `abstract` | First 1-2 paragraphs or lede; for long documents, an extractive summary |
-| `snippet_used` | Specific passage quoted or paraphrased in the final report |
+| `discovery_excerpt` | Relevance-only passage; never evidence or final-report support |
 
 ## Credibility tiers
 
 When the verifier flags a web source, it also evaluates credibility. Record the tier in the source record as `credibility_tier`:
 
 1. **Primary** — first-party documents: court filings, SEC 10-K filings, government agency reports, official statistical releases, company press releases for factual claims about the company itself, academic conference recordings
-2. **Authoritative secondary** — wire services and major newspapers of record (Reuters, AP, BBC, NYT, WSJ, FT, Bloomberg, Nature News, Science News); established think tanks (CBO, IMF, World Bank working papers, Brookings, Rand, Peterson Institute)
+2. **Authoritative secondary** — wire services and major newspapers of record (Reuters, AP, BBC, NYT, WSJ, FT, Bloomberg, Nature News, Science News); official analytical institutions (CBO, IMF, World Bank); and established research institutes (Brookings, RAND, Peterson Institute)
 3. **Analytical secondary** — reputable trade press, specialist newsletters, long-form magazines (The Atlantic, New Yorker, Economist features), industry analyst notes
 4. **Opinion / advocacy** — op-eds, partisan think tanks, advocacy organizations, personal blogs. Cite only when the source IS the claim (e.g., "Heritage Foundation argued X").
 5. **Uncertain** — anything else. Avoid unless no better source exists and the claim is load-bearing.
@@ -134,4 +138,4 @@ The lists above are a starting point, not exhaustive. Operators can extend them 
 - **Paywalls** — WebFetch can't bypass them. If a paywalled article is the best source, note the paywall and offer a preprint or OA mirror if one exists.
 - **Snippets vs. full text** — always WebFetch the full page before quoting. Search snippets are marketing summaries, not citable content.
 - **Archive for volatile sources** — when citing a fast-changing page (e.g., a Wikipedia article used for background, or a rapidly-updated news story), record both the live URL and an `archive.org` snapshot URL if available. Don't rely on the live URL surviving.
-- **Generative tools are never citable** — never cite ChatGPT, Bard, Claude, Perplexity answer pages, or similar. They don't have standing as sources; they aggregate others' work.
+- **Generated answers are not evidence for external facts.** Cite the underlying original instead. A generated output may be cited only when that output itself is the object being studied, with the system, date, and capture preserved.

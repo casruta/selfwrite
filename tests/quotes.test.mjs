@@ -86,17 +86,33 @@ describe('verifyQuote', () => {
     expect(r.reason).toBe('empty_source_text');
   });
 
-  it('checks snippet_used as well as abstract', () => {
+  it('rejects discovery snippets as quote evidence', () => {
     const r = verifyQuote({ quote_text: 'grows with model scale in our experiments' }, SOURCE);
-    expect(r.verbatim).toBe(true);
-    expect(r.field).toBe('snippet_used');
+    expect(r.verbatim).toBe(false);
+    expect(r.reason).toBe('not_substring');
   });
 });
 
 describe('elisionFragments', () => {
-  it('drops fragments too short to verify', () => {
+  it('retains short fragments so elision cannot hide altered words', () => {
     const frags = elisionFragments('the model … it … increasingly agrees with users');
-    expect(frags).toEqual(['increasingly agrees with users']);
+    expect(frags).toEqual(['the model', 'it', 'increasingly agrees with users']);
+  });
+
+  it('rejects a quote when any short elision fragment is absent', () => {
+    const r = verifyQuote({ quote_text: 'models ... never ... increasingly agree with users' }, SOURCE);
+    expect(r.verbatim).toBe(false);
+  });
+
+  it('rejects undersized elision fragments even when they occur in the source', () => {
+    const r = verifyQuote({ quote_text: 'models ... increasingly agree with users' }, SOURCE);
+    expect(r.verbatim).toBe(false);
+    expect(r.reason).toBe('elision_fragment_too_short');
+  });
+
+  it('recognizes Unicode and bracketed elision markers', () => {
+    expect(elisionFragments('models … increasingly agree')).toEqual(['models', 'increasingly agree']);
+    expect(elisionFragments('models [...] increasingly agree')).toEqual(['models', 'increasingly agree']);
   });
 });
 
@@ -137,6 +153,18 @@ describe('verifyQuotesFile', () => {
     const r = verifyQuotesFile('', '{broken');
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/parse error/);
+  });
+
+  it('rejects duplicate source and quote IDs', () => {
+    const duplicateSources = JSON.stringify([SOURCE, { ...SOURCE, title: 'duplicate' }]);
+    const quotes = [
+      JSON.stringify({ quote_id: 'Q001', source_id: 'S001', quote_text: 'grows with model scale' }),
+      JSON.stringify({ quote_id: 'Q001', source_id: 'S001', quote_text: 'models increasingly agree' }),
+    ].join('\n');
+    const r = verifyQuotesFile(quotes, duplicateSources);
+    expect(r.pass).toBe(false);
+    expect(r.duplicate_source_ids).toEqual(['S001']);
+    expect(r.duplicate_quote_ids).toEqual(['Q001']);
   });
 });
 

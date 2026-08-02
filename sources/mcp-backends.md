@@ -1,9 +1,13 @@
 # MCP Backends — Optional Upgrades Reference Card
 
-The skills work with zero API keys via the WebFetch patterns in the other
-cards. When an MCP server below is connected, the skill upgrades to it
-automatically; when absent, everything degrades to the existing cards. This
-card is the single home for MCP guidance.
+The skills require no paid third-party API by default. Some source cards use
+public endpoints; others require free credentials or a header-capable client.
+When an MCP server below is connected, the skill may upgrade to it. Otherwise,
+follow the source card's documented public or credential-aware path.
+
+## v0.3 evidence contract
+
+MCP results remain discovery data unless they contain a faithful full-text retrieval of the canonical original that can be stored, hashed, provenance-checked, and exactly located. An MCP summary, answer, rerank excerpt, or snippet is never evidence. Upgrades must preserve schema-3 `sources.json`, `documents/<S-ID>.txt`, `evidence.jsonl`, and `claims.jsonl`, counterqueries, original-text-only evidence, and the canonical research order.
 
 ## Detection rule (all skills)
 
@@ -25,7 +29,7 @@ injection with `injection_flagged: true` the same way.
 Purpose-built research search: structured results with full text and stable
 fields, replacing WebFetch+LLM extraction (the least reliable retrieval
 link). When available, it IS the `web` backend; `sources/web.md` becomes the
-no-key fallback. Source records keep the same shape — fill `snippet_used`
+no-key fallback. Discovery candidates keep the backend's temporary shape; fill `discovery_excerpt`
 from the returned text, set `backend: "mcp-exa"` / `"mcp-tavily"`.
 
 ```bash
@@ -47,7 +51,6 @@ claude mcp add zotero -e ZOTERO_API_KEY=<key> -e ZOTERO_LIBRARY_ID=<id> -- npx -
 
 ## Non-goals
 
-Academic backends (Semantic Scholar, OpenAlex, arXiv) stay on their WebFetch
-cards: their APIs are stable, keyless, and already documented with rate-limit
-handling. Revisit only if a run at `exhaustive` depth shows extraction errors
-the cards can't fix.
+Academic backends stay on their source cards. Semantic Scholar and arXiv have
+public paths; OpenAlex requires a free key under its current access model.
+Revisit an MCP replacement only when it preserves the same evidence contract.
